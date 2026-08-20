@@ -1,63 +1,43 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination } from 'swiper/modules';
+import Image from "next/image";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Pagination } from "swiper/modules";
+import { useState, useEffect } from "react";
 
-// Import Swiper styles
-import 'swiper/css';
-import 'swiper/css/pagination';
+import "swiper/css";
+import "swiper/css/pagination";
 
-const brands = [
-  {
-    id: 1,
-    name: "Sana Safinaz",
-    category: "Luxury Lawn",
-    image: "/sana.png",
-  },
-  {
-    id: 2,
-    name: "Khaadi",
-    category: "Premium Brand",
-    image: "/khaadi.png",
-  },
-  {
-    id: 3,
-    name: "Adidas",
-    category: "Premium Brand",
-    image: "/addidas.png",
-  },
-  {
-    id: 4,
-    name: "J.",
-    category: "Premium Brand",
-    image: "/j..png",
-  },
-  {
-    id: 5,
-    name: "Riwaj",
-    category: "Premium Brand",
-    image: "/logo.jfif",
-  },
-  {
-    id: 6,
-    name: "Bata",
-    category: "Premium Brand",
-    image: "/bata logo.png",
-  },
-  {
-    id: 7,
-    name: "Stylo",
-    category: "Premium Brand",
-    image: "/stylo logo.jfif",
-  },
-];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.5:8008";
+const IMAGE_BASE_URL = `${API_BASE_URL}/storage`;
 
 function Brands() {
+  const [brands, setBrands] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/brands`);
+        if (!res.ok) throw new Error("Failed to fetch brands");
+        const response = await res.json();
+        // this endpoint returns a plain array, not { data: [...] }
+        setBrands(Array.isArray(response) ? response : response.data || []);
+      } catch (err) {
+        console.error("Error fetching brands:", err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBrands();
+  }, []);
+
   return (
     <section className="bg-white py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto ">
-        
+      <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="mb-10">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -68,56 +48,75 @@ function Brands() {
           </p>
         </div>
 
+        {/* Loading — shimmer grid */}
+        {loading && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 pb-10">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-56 w-full animate-pulse rounded-2xl bg-gray-200"
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Error / empty state */}
+        {!loading && (error || brands.length === 0) && (
+          <div className="h-56 w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-2xl">
+            {error ? "Couldn't load brands." : "No brands available."}
+          </div>
+        )}
+
         {/* Brands Slider */}
-        <Swiper
-          modules={[Autoplay, Pagination]}
-          spaceBetween={20}
-          slidesPerView={1}
-          autoplay={{
-            delay: 3000,
-            disableOnInteraction: false,
-          }}
-          pagination={{
-            clickable: true,
-          }}
-          breakpoints={{
-            640: { slidesPerView: 2 },
-            768: { slidesPerView: 3 },
-            1024: { slidesPerView: 5 },
-          }}
-          className="pb-10"
-        >
-          {brands.map((brand) => (
-            <SwiperSlide key={brand.id}>
-              <div 
-                className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-56 group cursor-pointer flex flex-col justify-end p-4 text-left border border-gray-100"
-              >
-                {/* Brand Image */}
-                <div className="absolute inset-0 z-0">
-                  <Image 
-                    src={brand.image} 
-                    alt={brand.name}
-                    fill
-                    className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                  />
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                </div>
+        {!loading && !error && brands.length > 0 && (
+          <Swiper
+            modules={[Autoplay, Pagination]}
+            spaceBetween={20}
+            slidesPerView={1}
+            autoplay={{
+              delay: 3000,
+              disableOnInteraction: false,
+            }}
+            pagination={{ clickable: true }}
+            loop={brands.length > 5}
+            breakpoints={{
+              640: { slidesPerView: 2 },
+              768: { slidesPerView: 3 },
+              1024: { slidesPerView: 5 },
+            }}
+            className="pb-10"
+          >
+            {brands.map((brand) => (
+              <SwiperSlide key={brand.id}>
+                <div className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-56 group cursor-pointer flex flex-col justify-end p-4 text-left border border-gray-100">
+                  {/* Brand Image */}
+                  <div className="absolute inset-0 z-0 bg-gray-200">
+                    <Image
+                      src={`${IMAGE_BASE_URL}/${brand.image}`}
+                      alt={brand.name}
+                      fill
+                      unoptimized
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  </div>
 
-                {/* Brand Info Content */}
-                <div className="relative z-10">
-                  <h3 className="text-white font-bold text-base sm:text-lg tracking-wide drop-shadow-sm">
-                    {brand.name}
-                  </h3>
-                  <p className="text-gray-300 text-[11px] mt-0.5 font-medium">
-                    {brand.category}
-                  </p>
+                  {/* Brand Info Content */}
+                  <div className="relative z-10">
+                    <h3 className="text-white font-bold text-base sm:text-lg tracking-wide drop-shadow-sm">
+                      {brand.name}
+                    </h3>
+                    <p className="text-gray-300 text-[11px] mt-0.5 font-medium">
+                      {brand.slug}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        )}
       </div>
     </section>
   );

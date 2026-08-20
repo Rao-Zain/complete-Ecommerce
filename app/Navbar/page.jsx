@@ -13,13 +13,14 @@ import {
   FaBox,
   FaSignOutAlt,
   FaChevronDown,
+  FaChevronRight,
   FaSearch,
   FaQrcode,
   FaFolder,
 } from "react-icons/fa";
 
-// Uncomment and define your base URL or env variable in Next.js (e.g., process.env.NEXT_PUBLIC_BASE_URL)
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+// 👇 Apni API base yahan set karein
+const API_URL = "http://192.168.1.5:8008/api/categories";
 
 const Navbar = () => {
   const router = useRouter();
@@ -30,35 +31,33 @@ const Navbar = () => {
   const [user, setUser] = useState({ name: "Guest", email: "guest@example.com" });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Search state
   const [searchQuery, setSearchQuery] = useState("");
 
-  // API Categories States
   const [categoriesData, setCategoriesData] = useState([]);
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch categories from API on mount
-  // useEffect(() => {
-  //   fetch(`${BASE_URL}/api/categories`)
-  //     .then((res) => res.json())
-  //     .then((response) => {
-  //       const categories = Array.isArray(response)
-  //         ? response
-  //         : response.data || response.categories || [];
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [activeMain, setActiveMain] = useState(null);
+  const [activeSub, setActiveSub] = useState(null);
 
-  //       setCategoriesData(categories);
-  //       if (categories.length > 0) {
-  //         setActiveCategory(categories[0]);
-  //       }
-  //       setLoading(false);
-  //     })
-  //     .catch((err) => {
-  //       console.error("Error fetching categories:", err);
-  //       setLoading(false);
-  //     });
-  // }, []);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(API_URL);
+        const json = await res.json();
+        const categoryData = json?.data ? json.data : json;
+        setCategoriesData(Array.isArray(categoryData) ? categoryData : []);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+        setCategoriesData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const loadUserData = () => {
@@ -131,20 +130,28 @@ const Navbar = () => {
     }
   };
 
+  const resetCategoryMenu = () => {
+    setIsCategoryOpen(false);
+    setActiveMain(null);
+    setActiveSub(null);
+  };
+
+  const activeMainCat = categoriesData.find((c) => c.id === activeMain);
+  const activeSubCat = activeMainCat?.children?.find((s) => s.id === activeSub);
+
   return (
     <nav className="sticky top-0 z-50 bg-black text-white relative shadow-md">
       <div className="container px-4 mx-auto sm:px-6 lg:px-10">
         {/* Header */}
         <div className="flex justify-between items-center h-20">
-          
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
             <div>
-              <h2 className="font-extrabold text-2xl tracking-tight text-white">Shop<span className="text-blue-500">Nest</span></h2>
+              <h2 className="font-extrabold text-2xl tracking-tight text-white">
+                Shop<span className="text-blue-500">Nest</span>
+              </h2>
             </div>
           </Link>
 
-          {/* Desktop Search Bar - Centered */}
           <div className="hidden md:flex flex-1 max-w-xl mx-8">
             <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
               <input
@@ -165,7 +172,6 @@ const Navbar = () => {
             </form>
           </div>
 
-          {/* Desktop Right Side */}
           <div className="hidden md:flex items-center flex-shrink-0 ">
             <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
               <FaHeart className="text-xl hover:text-red-500 transition" />
@@ -185,7 +191,6 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* Profile / Sign In Box */}
             <div className="relative ml-2">
               <div
                 onClick={() => {
@@ -209,7 +214,6 @@ const Navbar = () => {
                 <FaChevronDown className="text-xs text-gray-400 ml-1" />
               </div>
 
-              {/* Profile Dropdown */}
               {isLoggedIn && showDropdown && (
                 <div className="absolute right-0 mt-2 w-64 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50 animate-in fade-in slide-in-from-top-2">
                   <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
@@ -237,7 +241,6 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
           <button className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <FaTimes /> : <FaBars />}
           </button>
@@ -247,108 +250,139 @@ const Navbar = () => {
       {/* --- BOTTOM NAVBAR --- */}
       <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
         <div className="container px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
-          
-          {/* All Categories Toggle Button on Left */}
           <div
             className="relative"
             onMouseEnter={() => setIsCategoryOpen(true)}
-            onMouseLeave={() => setIsCategoryOpen(false)}
+            onMouseLeave={resetCategoryMenu}
           >
             <button
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
               className="flex items-center gap-2.5 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
             >
-              <FaBars className="text-sm" /> <span>All Categories</span> <FaChevronDown className="text-xs text-gray-500 ml-2" />
+              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
+              <FaChevronDown className="text-xs text-gray-500 ml-2" />
             </button>
 
-            {/* Mega Menu Dropdown */}
-            {isCategoryOpen && (
-              <div className="absolute top-full left-0 w-[950px] bg-white text-gray-800 shadow-2xl border border-gray-100 rounded-b-2xl flex z-50 overflow-hidden">
-                {/* Left Sidebar: Parent Categories */}
-                <div className="w-1/4 border-r border-gray-100 py-3 bg-gray-50 max-h-[520px] overflow-y-auto">
-                  {loading ? (
-                    <div className="p-4 text-xs text-gray-500 text-center">Loading categories...</div>
-                  ) : categoriesData.length === 0 ? (
-                    <div className="p-4 text-xs text-gray-500 text-center">No categories available</div>
-                  ) : (
-                    categoriesData.map((cat, index) => (
-                      <Link
-                        key={cat.id || index}
-                        href={`/Categories/${cat.slug}`}
-                        onMouseEnter={() => setActiveCategory(cat)}
-                        onClick={() => setIsCategoryOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3 text-xs font-semibold cursor-pointer transition ${
-                          activeCategory?.name === cat.name
-                            ? "bg-white text-blue-600 border-l-4 border-blue-600 shadow-xs"
-                            : "text-gray-600 hover:bg-gray-100/80 hover:text-gray-900"
-                        }`}
-                      >
-                        <span className="text-base text-blue-500">
-                          <FaFolder />
-                        </span>
-                        <span className="truncate">{cat.name}</span>
-                      </Link>
-                    ))
-                  )}
-                </div>
+            <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
+              {/* LEVEL 1: Main Categories */}
+              <div className="w-64 bg-white h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 p-2 border border-gray-100 shadow-2xl rounded-bl-2xl">
+                {loading ? (
+                  <div className="p-4 text-xs text-gray-500 text-center">Loading categories...</div>
+                ) : categoriesData.length === 0 ? (
+                  <div className="p-4 text-xs text-gray-500 text-center">No categories available</div>
+                ) : (
+                  <ul className="space-y-0.5 relative">
+                    {categoriesData.map((mainCat) => {
+                      const hasSub = mainCat.children && mainCat.children.length > 0;
+                      return (
+                        <li key={mainCat.id} className="relative">
+                          <div
+                            onMouseEnter={() => {
+                              setActiveMain(mainCat.id);
+                              setActiveSub(null);
+                            }}
+                            onClick={() => {
+                              resetCategoryMenu();
+                              router.push(`/FashionCategory/${mainCat.id}`);
+                            }}
+                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
+                              text-gray-700 hover:bg-gray-50 hover:text-black
+                              ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                          >
+                            <span className="flex-1 text-sm font-semibold">
+                              {mainCat.name}
+                            </span>
 
-                {/* Right Content Area: Sub-categories and Items */}
-                <div className="w-3/4 p-6 max-h-[520px] overflow-y-auto bg-white">
-                  {activeCategory ? (
-                    <>
-                      <h3 className="text-base font-extrabold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
-                        <span className="text-blue-600"><FaFolder /></span> {activeCategory.name}
-                      </h3>
-                      <div className="grid grid-cols-3 gap-6">
-                        {activeCategory.children?.map((sub, sIdx) => (
-                          <div key={sub.id || sIdx} className="space-y-2">
-                            <Link
-                              href={`/Categories/${activeCategory.slug}/${sub.slug}`}
-                              onClick={() => setIsCategoryOpen(false)}
-                              className="font-bold text-xs uppercase tracking-wider text-gray-900 hover:text-blue-600 cursor-pointer block"
-                            >
-                              {sub.name}
-                            </Link>
-                            <ul className="space-y-1.5">
-                              {sub.children?.map((item, iIdx) => (
-                                <li key={item.id || iIdx}>
-                                  <Link
-                                    href={`/Categories/${activeCategory.slug}/${sub.slug}/${item.slug}`}
-                                    onClick={() => setIsCategoryOpen(false)}
-                                    className="text-xs text-gray-500 hover:text-blue-600 transition block py-0.5 font-normal hover:translate-x-1 duration-150"
-                                  >
-                                    {item.name}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
+                            {hasSub && (
+                              <FaChevronRight
+                                className={`text-xs ${activeMain === mainCat.id ? "text-blue-500" : "text-gray-400"}`}
+                              />
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-xs text-gray-400 text-center py-20">Select a category</div>
-                  )}
-                </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
-            )}
+
+              {/* LEVEL 2: Sub Categories Panel */}
+              {activeMainCat && activeMainCat.children && activeMainCat.children.length > 0 && (
+                <div
+                  onMouseEnter={() => setActiveMain(activeMainCat.id)}
+                  className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 shadow-2xl"
+                >
+                  <ul className="space-y-0.5">
+                    {activeMainCat.children.map((subCat) => {
+                      const hasChild = subCat.children && subCat.children.length > 0;
+                      return (
+                        <li key={subCat.id} className="relative">
+                          <div
+                            onMouseEnter={() => setActiveSub(subCat.id)}
+                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
+                              text-gray-700 hover:bg-gray-50 hover:text-black
+                              ${activeSub === subCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                          >
+                            <Link
+                              href={`/ExploreProducts/${activeMainCat.slug}/${subCat.slug}`}
+                              onClick={resetCategoryMenu}
+                              className="flex-1 text-sm font-semibold"
+                            >
+                              {subCat.name}
+                            </Link>
+
+                            {hasChild && (
+                              <FaChevronRight
+                                className={`text-xs ${activeSub === subCat.id ? "text-blue-500" : "text-gray-400"}`}
+                              />
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* LEVEL 3: Child Categories Panel */}
+              {activeSubCat && activeSubCat.children && activeSubCat.children.length > 0 && (
+                <div
+                  onMouseEnter={() => {
+                    setActiveMain(activeMainCat.id);
+                    setActiveSub(activeSubCat.id);
+                  }}
+                  className="w-64 bg-white h-[420px] p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 border-l border-gray-100 shadow-2xl rounded-br-2xl"
+                >
+                  <ul className="space-y-0.5">
+                    {activeSubCat.children.map((childCat) => (
+                      <li key={childCat.id}>
+                        <Link
+                          href={`/ExploreProducts/${activeMainCat.slug}/${activeSubCat.slug}/${childCat.slug}`}
+                          onClick={resetCategoryMenu}
+                          className="block py-2 px-3 text-sm font-semibold transition rounded-md text-gray-700 hover:bg-gray-50 hover:text-black"
+                        >
+                          {childCat.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Centered Navigation Links */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
             <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
             <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
             <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
             <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
           </div>
-
         </div>
       </div>
 
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="md:hidden border-t py-6 px-4 bg-white text-gray-800 shadow-xl max-h-[calc(100vh-80px)] overflow-y-auto">
-          {/* Mobile Search Bar */}
           <div className="mb-6">
             <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
               <input
@@ -364,7 +398,6 @@ const Navbar = () => {
             </form>
           </div>
 
-          {/* Quick Icons Row (Wishlist & Cart) */}
           <div className="flex items-center justify-around gap-4 mb-6 pb-4 border-b border-gray-100">
             <Link href="/wishlist" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold flex-1 justify-center">
               <FaHeart className="text-red-500 text-base" />
@@ -387,7 +420,50 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Navigation Links */}
+          {/* Mobile Categories Accordion */}
+          <div className="mb-6 border-b border-gray-100 pb-4">
+            <h4 className="text-xs font-bold uppercase text-gray-400 mb-2 px-3">Categories</h4>
+            <div className="max-h-64 overflow-y-auto">
+              {categoriesData.map((mainCat) => (
+                <details key={mainCat.id} className="border-b border-gray-50">
+                  <summary className="flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 cursor-pointer">
+                    {mainCat.name}
+                  </summary>
+
+                  {/* ✅ Mobile mein bhi parent category ka link FashionCategory page pr */}
+                  <Link
+                    href={`/FashionCategory/${mainCat.id}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="block py-1.5 px-6 text-xs text-blue-600 font-semibold"
+                  >
+                    View All in {mainCat.name}
+                  </Link>
+
+                  {mainCat.children?.map((sub) => (
+                    <details key={sub.id} className="pl-4 border-t border-gray-50">
+                      <summary className="flex items-center justify-between py-2 px-3 text-xs font-semibold text-gray-600 cursor-pointer">
+                        {sub.name}
+                      </summary>
+                      <ul className="pl-4">
+                        {sub.children?.map((child) => (
+                          <li key={child.id}>
+                            <Link
+                              href={`/Categories/${mainCat.slug}/${sub.slug}/${child.slug}`}
+                              onClick={() => setMenuOpen(false)}
+                              className="block py-1.5 px-3 text-xs text-gray-500 hover:text-blue-600"
+                            >
+                              {child.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ))}
+                </details>
+              ))}
+            </div>
+          </div>
+
           <ul className="flex flex-col gap-2 font-medium text-sm">
             <li><Link href="/" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Home</Link></li>
             <li><Link href="/products" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Products</Link></li>
@@ -395,7 +471,6 @@ const Navbar = () => {
             <li><Link href="/contact" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Contact Us</Link></li>
           </ul>
 
-          {/* User Profile / Auth Section */}
           <div className="bg-gray-50 border border-gray-100 rounded-2xl shadow-xs mt-6 p-4">
             <div className="flex items-center gap-3">
               <div className="text-blue-600 flex items-center justify-center text-lg">
