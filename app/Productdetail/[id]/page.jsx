@@ -59,7 +59,7 @@ export default function ProductDetail() {
         {/* Left Side: Image Section with Slider & Thumbnails */}
         <div className="flex flex-col gap-4">
           {/* Main Image with Smaller Slider Arrows */}
-          <div className="relative w-full h-[350px] bg-gray-100 rounded-lg overflow-hidden border group">
+          <div className="relative w-full h-[350px] bg-gray-100 rounded-lg overflow-hidden border  border-gray-200 group">
             <Image
               src={productImages[currentIndex]}
               alt={product.title}
@@ -136,7 +136,7 @@ export default function ProductDetail() {
                 <button
                   key={c.name}
                   onClick={() => setSelectedColor(c.name)}
-                  className={`flex items-center gap-2 px-2.5 py-1 rounded-md border text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-2.5 py-1 rounded-md border border-gray-200 text-xs font-medium transition-all ${
                     selectedColor === c.name
                       ? "border-orange-600 bg-orange-50 ring-1 ring-orange-600"
                       : "border-gray-300 bg-white hover:bg-gray-50"
@@ -194,12 +194,12 @@ export default function ProductDetail() {
       </div>
 
       {/* --- CUSTOMER REVIEWS SECTION --- */}
-      <div className="mt-16 border-t pt-8">
+      <div className="mt-16 border-t border-gray-200 pt-8">
         <h2 className="text-xl font-bold text-gray-800 mb-6">Customer Reviews</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center bg-gray-50 p-6 rounded-lg border">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center bg-gray-50 p-6 rounded-lg border border-gray-200">
           {/* Overall Rating Display */}
-          <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r pb-6 md:pb-0 pr-0 md:pr-6">
+          <div className="flex flex-col items-center md:items-start border-b md:border-b-0 md:border-r border-gray-200 pb-6 md:pb-0 pr-0 md:pr-6">
             <span className="text-4xl font-extrabold text-gray-800">5.0</span>
             <div className="flex text-yellow-400 text-lg my-1">★★★★★</div>
             <span className="text-xs text-gray-500">Based on 1 Review</span>
@@ -228,7 +228,7 @@ export default function ProductDetail() {
         {/* Recent Reviews */}
         <div className="mt-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Reviews</h3>
-          <div className="bg-white border rounded-lg p-6 shadow-sm">
+          <div className="bg-white border  border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-sm">
