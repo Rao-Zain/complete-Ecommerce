@@ -42,7 +42,7 @@ const Hero = () => {
 
   if (error || sliders.length === 0) {
     return (
-      <div className="h-[220px] lg:h-[78vh] lg:mt-0 mt-[40px] w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm">
+      <div className="h-[220px] lg:h-[68vh] lg:mt-0 mt-[40px] w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm">
         {error ? "Couldn't load slider images." : "No slider images available."}
       </div>
     );
@@ -58,7 +58,7 @@ const Hero = () => {
         }}
         pagination={{ clickable: true }}
         loop={sliders.length > 1}
-        className="h-[220px] lg:h-[78vh] lg:mt-0 mt-[40px]"
+        className="h-[220px] lg:h-[69vh] lg:mt-0 mt-[40px]"
       >
         {sliders.map((item) => (
           <SwiperSlide key={item.id}>

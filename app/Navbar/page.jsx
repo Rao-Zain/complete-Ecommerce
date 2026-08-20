@@ -265,7 +265,7 @@ const Navbar = () => {
 
             <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
               {/* LEVEL 1: Main Categories */}
-              <div className="w-64 bg-white h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 p-2 border border-gray-100 shadow-2xl rounded-bl-2xl">
+              <div className="w-64 bg-white h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 p-2 border border-gray-100 shadow-2xl ">
                 {loading ? (
                   <div className="p-4 text-xs text-gray-500 text-center">Loading categories...</div>
                 ) : categoriesData.length === 0 ? (
@@ -351,7 +351,7 @@ const Navbar = () => {
                     setActiveMain(activeMainCat.id);
                     setActiveSub(activeSubCat.id);
                   }}
-                  className="w-64 bg-white h-[420px] p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 border-l border-gray-100 shadow-2xl rounded-br-2xl"
+                  className="w-64 bg-white h-[420px] p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 border-l border-gray-100 shadow-2xl "
                 >
                   <ul className="space-y-0.5">
                     {activeSubCat.children.map((childCat) => (
