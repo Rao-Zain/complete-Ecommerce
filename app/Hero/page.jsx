@@ -58,7 +58,7 @@ const Hero = () => {
         }}
         pagination={{ clickable: true }}
         loop={sliders.length > 1}
-        className="h-[220px] lg:h-[69vh] lg:mt-0 mt-[40px]"
+        className="w-full h-[180px] xs:h-[220px] sm:h-[320px] md:h-[380px] lg:h-[435px] object-cover"
       >
         {sliders.map((item) => (
           <SwiperSlide key={item.id}>
