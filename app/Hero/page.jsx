@@ -1,34 +1,50 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import Image from "next/image";
 
 import "swiper/css";
 import "swiper/css/pagination";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const Hero = () => {
-  // Static slider data using local images from the public folder
-  const staticSliders = [
-    {
-      id: 1,
-      image: "/bag.jpg",
-      heading: "Discover Our New Collection",
-      description: "Upgrade your style with our latest arrivals and exclusive deals.",
-    },
-    {
-      id: 2,
-      image: "/glasses.jpg", // Aap yahan koi aur image bhi de sakte hain misal ke taur par /banner2.jpg
-      heading: "Big Summer Sale",
-      description: "Get up to 50% off on selected items across all categories.",
-    },
-    {
-      id: 3,
-      image: "/promo.jpg",
-      heading: "Premium Quality Products",
-      description: "Shop with confidence and enjoy fast delivery nationwide.",
-    },
-  ];
+  const [sliders, setSliders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const fetchSliders = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sliders`);
+        if (!res.ok) throw new Error("Failed to fetch sliders");
+        const response = await res.json();
+        setSliders(response.data || []);
+      } catch (err) {
+        console.error("Error fetching sliders:", err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSliders();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-[220px] lg:h-[78vh] lg:mt-0 mt-[40px] w-full animate-pulse bg-gray-200" />
+    );
+  }
+
+  if (error || sliders.length === 0) {
+    return (
+      <div className="h-[220px] lg:h-[68vh] lg:mt-0 mt-[40px] w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm">
+        {error ? "Couldn't load slider images." : "No slider images available."}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -39,17 +55,18 @@ const Hero = () => {
           disableOnInteraction: false,
         }}
         pagination={{ clickable: true }}
-        loop={staticSliders.length > 1}
-        className="h-[220px] lg:h-[78vh] lg:mt-0 mt-[40px]"
+        loop={sliders.length > 1}
+        className="w-full h-[180px] xs:h-[220px] sm:h-[320px] md:h-[380px] lg:h-[435px] object-cover"
       >
-        {staticSliders.map((item) => (
+        {sliders.map((item) => (
           <SwiperSlide key={item.id}>
             <div className="relative w-full h-full">
               <Image
-                src={item.image}
+                src={`${IMAGE_BASE_URL}/${item.image}`}
                 alt={item.heading}
                 fill
                 priority
+                unoptimized
                 sizes="100vw"
                 className="object-cover"
               />
@@ -69,7 +86,6 @@ const Hero = () => {
         ))}
       </Swiper>
     </div>
-    
   );
 };
 
