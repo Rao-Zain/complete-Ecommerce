@@ -7,9 +7,7 @@ import { useState, useEffect } from "react";
 
 import "swiper/css";
 import "swiper/css/pagination";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://192.168.1.5:8008";
-const IMAGE_BASE_URL = `${API_BASE_URL}/storage`;
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 function Brands() {
   const [brands, setBrands] = useState([]);

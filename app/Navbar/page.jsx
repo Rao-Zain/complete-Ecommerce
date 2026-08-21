@@ -20,7 +20,7 @@ import {
 } from "react-icons/fa";
 
 // 👇 Apni API base yahan set karein
-const API_URL = "http://192.168.1.5:8008/api/categories";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const Navbar = () => {
   const router = useRouter();
@@ -44,7 +44,7 @@ const Navbar = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const res = await fetch(API_URL);
+        const res = await fetch(`${API_BASE_URL}/api/categories`);
         const json = await res.json();
         const categoryData = json?.data ? json.data : json;
         setCategoriesData(Array.isArray(categoryData) ? categoryData : []);
