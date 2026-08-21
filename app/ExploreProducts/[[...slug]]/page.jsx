@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { FaShoppingCart, FaStar, FaArrowLeft, FaCheck, FaHeart } from "react-icons/fa";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.5:8008";
+import { FaShoppingCart, FaStar, FaArrowLeft, FaCheck, FaHeart, FaChevronDown, FaChevronUp } from "react-icons/fa";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.2:8008";
 
 // Shimmer Loader for the Shop Page
 const ShopShimmer = () => {
@@ -34,6 +34,8 @@ const ShopShimmer = () => {
     );
 };
 
+const SORT_OPTIONS = ['Latest Arrivals', 'Price: Low to High', 'Price: High to Low'];
+
 const ExploreProducts = () => {
     const params = useParams();
     const router = useRouter();
@@ -57,6 +59,20 @@ const ExploreProducts = () => {
     const [selectedBrands, setSelectedBrands] = useState([]);
     const [showAllBrands] = useState(false);
     const [sortOption, setSortOption] = useState('Price: High to Low');
+
+    // Sort dropdown open/close state
+    const [sortOpen, setSortOpen] = useState(false);
+    const sortRef = useRef(null);
+
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (sortRef.current && !sortRef.current.contains(e.target)) {
+                setSortOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const availableColors = [
         { name: 'black', hex: '#000000' },
@@ -163,6 +179,11 @@ const ExploreProducts = () => {
         } else {
             setSelectedBrands([...selectedBrands, slug]);
         }
+    };
+
+    const handleSortSelect = (option) => {
+        setSortOption(option);
+        setSortOpen(false);
     };
 
     const hasActiveFilters = selectedCategory || priceRange < 100000 || selectedColor || selectedSize || selectedBrands.length > 0;
@@ -380,15 +401,40 @@ const ExploreProducts = () => {
                     <div className="container mx-auto">
                         <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
                             <h2 className="font-bold text-gray-800">Products ({products.length})</h2>
-                            <select
-                                value={sortOption}
-                                onChange={(e) => setSortOption(e.target.value)}
-                                className="border border-gray-100 rounded-lg px-1 py-2 text-sm bg-gray-50 outline-none cursor-pointer pr-10"
-                            >
-                                <option>Price: High to Low</option>
-                                <option>Price: Low to High</option>
-                                <option>Latest Arrivals</option>
-                            </select>
+
+                            {/* Custom styled sort dropdown (replaces native <select>) */}
+                            <div className="relative inline-block" ref={sortRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSortOpen((o) => !o)}
+                                    className="flex items-center gap-2 border border-gray-100 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 cursor-pointer min-w-[170px] justify-between"
+                                >
+                                    {sortOption}
+                                    {sortOpen ? (
+                                        <FaChevronUp className="text-[10px] text-gray-400" />
+                                    ) : (
+                                        <FaChevronDown className="text-[10px] text-gray-400" />
+                                    )}
+                                </button>
+
+                                {sortOpen && (
+                                    <div className="absolute right-0 mt-2 w-full min-w-[170px] bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20 overflow-hidden">
+                                        {SORT_OPTIONS.map((option) => (
+                                            <button
+                                                key={option}
+                                                type="button"
+                                                onClick={() => handleSortSelect(option)}
+                                                className={`w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors ${sortOption === option
+                                                    ? "bg-gray-50 text-gray-900 font-semibold"
+                                                    : "text-gray-600 hover:bg-gray-50"
+                                                    }`}
+                                            >
+                                                {option}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {loading ? (
@@ -402,10 +448,9 @@ const ExploreProducts = () => {
                                 <p className="text-gray-500 text-sm font-medium">No products found matching your filters.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                                 {products.map((product) => {
                                     const variant = product.main_variant || product.variants?.[0];
-
                                     const imagePath = product.main_variant_image?.image_path
                                         ? `${BASE_URL}/storage/${product.main_variant_image.image_path}`
                                         : product.image
@@ -415,55 +460,67 @@ const ExploreProducts = () => {
                                     return (
                                         <div
                                             key={product.id}
-                                            className="bg-white rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300 group w-full border border-gray-100 flex flex-col justify-between"
+                                            className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group w-full flex flex-col justify-between relative"
                                         >
-                                            <Link href={`/product/${product.slug}`} className="flex flex-col h-full w-full">
-                                                <div className="relative bg-gray-100 overflow-hidden">
+                                            {/* Top Seller Badge & Heart Icon Over Image */}
+                                            <div className="relative bg-gray-100 overflow-hidden">
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center text-gray-600 shadow hover:text-red-500 transition cursor-pointer border-none"
+                                                >
+                                                    <FaHeart className="text-xs" />
+                                                </button>
+
+                                                <Link href={`/product/${product.slug}`}>
                                                     <img
                                                         src={imagePath}
                                                         alt={product.name}
-                                                        className="w-full h-48 lg:h-48 object-cover group-hover:scale-105 transition duration-300 block"
+                                                        className="w-full h-48 lg:h-40 object-cover group-hover:scale-105 transition duration-300"
                                                     />
-                                                    <button type="button" className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-gray-700 hover:text-red-500 shadow-sm cursor-pointer border-none">
-                                                        <FaHeart />
-                                                    </button>
-                                                </div>
+                                                </Link>
+                                            </div>
 
-                                                <div className="flex-grow flex flex-col justify-between p-3">
-                                                    <div>
-                                                        <h2 className="text-sm font-semibold line-clamp-1 text-gray-800 group-hover:text-black">
+                                            {/* Card Content */}
+                                            <div className="p-2 flex flex-col justify-between flex-grow">
+                                                <div>
+                                                    <Link href={`/product/${product.slug}`}>
+                                                        <h2 className="text-xs font-bold text-gray-800 line-clamp-1 hover:text-black">
                                                             {product.name}
                                                         </h2>
+                                                    </Link>
+                                                    <p className="text-[11px] text-gray-500 line-clamp-1">
+                                                        {product.short_description || "Explore high quality and comfortable material..."}
+                                                    </p>
 
-                                                        <div className="flex items-center gap-1 mt-1 text-yellow-500 text-xs">
-                                                            {[...Array(5)].map((_, i) => (
-                                                                <FaStar key={i} />
-                                                            ))}
-                                                            <span className="text-gray-500 text-xs ml-1">(4.9)</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex justify-between items-end mt-3">
-                                                        <div>
-                                                            <h3 className="text-sm lg:text-base font-bold text-green-600">
-                                                                Rs {variant?.price || product.price || product.sale_price || "N/A"}
-                                                            </h3>
-                                                            {(variant?.cut_price || product.cut_price) && (
-                                                                <p className="text-[11px] text-gray-400 line-through">
-                                                                    Rs {variant?.cut_price || product.cut_price}
-                                                                </p>
-                                                            )}
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-pink-500 text-white flex justify-center items-center hover:bg-black duration-300 cursor-pointer border-none"
-                                                        >
-                                                            <FaShoppingCart className="text-xs" />
-                                                        </button>
+                                                    {/* Rating Stars */}
+                                                    <div className="flex items-center gap-1 text-yellow-400 text-[10px] mt-1">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <FaStar key={i} />
+                                                        ))}
+                                                        <span className="text-gray-400 ml-1">(5.0)</span>
                                                     </div>
                                                 </div>
-                                            </Link>
+
+                                                {/* Price and Stock Section */}
+                                                <div className=" flex items-center justify-between gap-2">
+                                                    {/* Price & Cut Price (Stacked Vertically) */}
+                                                    <div className="flex flex-col">
+                                                        <h3 className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">
+                                                            Rs {Math.floor(Number(variant?.price || product.price)) || "N/A"}
+                                                        </h3>
+                                                        {variant?.cut_price && (
+                                                            <span className="text-[10px] text-gray-400 line-through whitespace-nowrap">
+                                                                Rs {Math.floor(Number(variant.cut_price))}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Stock Badge - Compact */}
+                                                    <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex-shrink-0">
+                                                        {variant?.stock || product.stock || "216"} In Stock
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     );
                                 })}

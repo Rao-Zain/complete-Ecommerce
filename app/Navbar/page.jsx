@@ -20,7 +20,7 @@ import {
 } from "react-icons/fa";
 
 // 👇 Apni API base yahan set karein
-const API_URL = "http://192.168.1.5:8008/api/categories";
+const API_URL = "http://192.168.1.2:8008/api/categories";
 
 const Navbar = () => {
   const router = useRouter();

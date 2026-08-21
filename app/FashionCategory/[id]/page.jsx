@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { FaShoppingCart, FaStar, FaHeart } from "react-icons/fa";
 
 // 👇 Apni API base yahan set karein (jaisa Navbar mein tha)
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.5:8008";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.2:8008";
 
 // Shimmer Loader Component for Smooth Loading Experience
 const ShimmerLoader = () => {
