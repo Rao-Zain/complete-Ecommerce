@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  FaShoppingBag,
   FaShoppingCart,
   FaBars,
   FaTimes,
@@ -16,11 +15,11 @@ import {
   FaChevronRight,
   FaSearch,
   FaQrcode,
-  FaFolder,
+  FaSignInAlt,
+  FaUserPlus
 } from "react-icons/fa";
 
-// 👇 Apni API base yahan set karein
-import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
+import { API_BASE_URL } from "@/lib/config";
 
 const Navbar = () => {
   const router = useRouter();
@@ -30,16 +29,37 @@ const Navbar = () => {
 
   const [user, setUser] = useState({ name: "Guest", email: "guest@example.com" });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Categories states
   const [categoriesData, setCategoriesData] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
 
+  // Dropdown & Modal States
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  
+  // 🔥 Modal States (Login & Register Popups)
+  const [activeModal, setActiveModal] = useState(null); // 'login' | 'register' | null
+
+  // Login Form States
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Register Form States
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [regError, setRegError] = useState("");
+  const [regLoading, setRegLoading] = useState(false);
+
+  // Fetch Categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -50,29 +70,19 @@ const Navbar = () => {
         setCategoriesData(Array.isArray(categoryData) ? categoryData : []);
       } catch (err) {
         console.error("Failed to load categories:", err);
-        setCategoriesData([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchCategories();
   }, []);
 
+  // Load User & Auth state
   useEffect(() => {
     const loadUserData = () => {
       const token = localStorage.getItem("token");
-      const storedName =
-        localStorage.getItem("userName") ||
-        localStorage.getItem("name") ||
-        localStorage.getItem("fullName") ||
-        localStorage.getItem("username") ||
-        "User";
-
-      const storedEmail =
-        localStorage.getItem("email") ||
-        localStorage.getItem("userEmail") ||
-        "user@example.com";
+      const storedName = localStorage.getItem("userName") || localStorage.getItem("name") || "User";
+      const storedEmail = localStorage.getItem("email") || "user@example.com";
 
       setUser({ name: storedName, email: storedEmail });
       setIsLoggedIn(!!token);
@@ -88,6 +98,7 @@ const Navbar = () => {
     };
   }, []);
 
+  // Wishlist & Cart Counters
   useEffect(() => {
     const updateCount = () => {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
@@ -109,24 +120,125 @@ const Navbar = () => {
     return () => window.removeEventListener("cartUpdated", updateCart);
   }, []);
 
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
   const handleLogout = () => {
     localStorage.clear();
     setUser({ name: "Guest", email: "guest@example.com" });
     setIsLoggedIn(false);
     setShowDropdown(false);
-    setMenuOpen(false);
     window.dispatchEvent(new Event("authUpdated"));
-    alert("Logout Successfully");
-    router.push("/sign");
+    
+    // 🔥 Alert ki jagah ab seedha login modal show hoga
+    setActiveModal("login");
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  // Handle Login API (Fixed for 401 & flexible data response extraction)
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/login`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json" 
+        },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+
+      const data = await res.json();
+      console.log("Login Response Data:", data);
+
+      if (res.ok) {
+        const userToken = data.token || data.access_token || data.data?.token; 
+        const userName = data.user?.name || data.name || data.data?.name || loginEmail.split("@")[0];
+        const userEmail = data.user?.email || data.email || data.data?.email || loginEmail;
+
+        if (!userToken) {
+          setLoginError("Login succeeded, but no token was returned by the server.");
+          return;
+        }
+
+        localStorage.setItem("token", userToken);
+        localStorage.setItem("userName", userName);
+        localStorage.setItem("email", userEmail);
+
+        window.dispatchEvent(new Event("authUpdated"));
+        setActiveModal(null);
+        setLoginEmail("");
+        setLoginPassword("");
+      } else {
+        const errorMessage = data.message || data.error || "Invalid email or password (401 Unauthorized)";
+        setLoginError(errorMessage);
+      }
+    } catch (err) {
+      console.error("Login catch error:", err);
+      setLoginError("Something went wrong. Please check your network connection.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Handle Register API
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    if (regPassword !== regConfirmPassword) {
+      setRegError("Passwords do not match");
+      return;
+    }
+
+    setRegLoading(true);
+    setRegError("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/register`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json" 
+        },
+        body: JSON.stringify({ 
+          name: regName, 
+          email: regEmail, 
+          password: regPassword,
+          password_confirmation: regConfirmPassword 
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        const userToken = data.token || data.access_token || data.data?.token;
+        const userName = data.user?.name || data.name || data.data?.name || regName;
+        const userEmail = data.user?.email || data.email || data.data?.email || regEmail;
+
+        localStorage.setItem("token", userToken);
+        localStorage.setItem("userName", userName);
+        localStorage.setItem("email", userEmail);
+
+        window.dispatchEvent(new Event("authUpdated"));
+        setActiveModal(null);
+        setRegName("");
+        setRegEmail("");
+        setRegPassword("");
+        setRegConfirmPassword("");
+      } else {
+        const errorMessage = data.message || 
+          (data.errors ? Object.values(data.errors)[0][0] : "Registration failed.");
+        setRegError(errorMessage);
+      }
+    } catch (err) {
+      setRegError("Something went wrong. Please try again.");
+    } finally {
+      setRegLoading(false);
     }
   };
 
@@ -140,376 +252,378 @@ const Navbar = () => {
   const activeSubCat = activeMainCat?.children?.find((s) => s.id === activeSub);
 
   return (
-    <nav className="sticky top-0 z-50 bg-black text-white relative shadow-md">
-      <div className="container px-4 mx-auto sm:px-6 lg:px-10">
-        {/* Header */}
-        <div className="flex justify-between items-center h-20">
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div>
-              <h2 className="font-extrabold text-2xl tracking-tight text-white">
-                Shop<span className="text-blue-500">Nest</span>
-              </h2>
-            </div>
-          </Link>
-
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
-            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, brands and more..."
-                className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner"
-              />
-              <div className="absolute right-2 flex items-center gap-2">
-                <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
-                  <FaQrcode className="text-base" />
-                </button>
-                <button type="submit" className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 transition">
-                  <FaSearch className="text-sm" />
-                </button>
+    <>
+      <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
+        <div className="container px-4 mx-auto sm:px-6 lg:px-10">
+          {/* Header */}
+          <div className="flex justify-between items-center h-20">
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+              <div>
+                <h2 className="font-extrabold text-2xl tracking-tight text-white">
+                  Shop<span className="text-blue-500">Nest</span>
+                </h2>
               </div>
-            </form>
-          </div>
-
-          <div className="hidden md:flex items-center flex-shrink-0 ">
-            <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-              <FaHeart className="text-xl hover:text-red-500 transition" />
-              {wishlistCount > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {wishlistCount}
-                </span>
-              )}
             </Link>
 
-            <Link href="/cartcom" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-              <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
-              {cartCount > 0 && (
-                <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-
-            <div className="relative ml-2">
-              <div
-                onClick={() => {
-                  if (!isLoggedIn) {
-                    router.push("/sign");
-                  } else {
-                    setShowDropdown(!showDropdown);
-                  }
-                }}
-                className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-gray-800 border border-transparent transition p-1.5"
-              >
-                <div className="text-white flex items-center justify-center text-lg">
-                  <FaUser />
+            <div className="hidden md:flex flex-1 max-w-xl mx-8">
+              <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products, brands and more..."
+                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner"
+                />
+                <div className="absolute right-2 flex items-center gap-2">
+                  <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
+                    <FaQrcode className="text-base" />
+                  </button>
+                  <button type="submit" className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 transition">
+                    <FaSearch className="text-sm" />
+                  </button>
                 </div>
-                <div className="text-left leading-tight">
-                  <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
-                  <span className="block text-xs font-bold text-white truncate max-w-[110px]">
-                    {isLoggedIn ? user.name : "Sign in / Register"}
+              </form>
+            </div>
+
+            <div className="hidden md:flex items-center flex-shrink-0">
+              <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+                <FaHeart className="text-xl hover:text-red-500 transition" />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                    {wishlistCount}
                   </span>
+                )}
+              </Link>
+
+              <Link href="/cartcom" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+                <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
+                {cartCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* User Profile / Sign In Dropdown */}
+              <div
+                className="relative ml-2 py-2"
+                onMouseEnter={() => setShowDropdown(true)}
+                onMouseLeave={() => setShowDropdown(false)}
+              >
+                <div
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      setActiveModal("login");
+                    } else {
+                      setShowDropdown(!showDropdown);
+                    }
+                  }}
+                  className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-gray-800 border border-transparent transition p-1.5"
+                >
+                  <div className="text-white flex items-center justify-center text-lg">
+                    <FaUser />
+                  </div>
+                  <div className="text-left leading-tight">
+                    <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
+                    <span className="block text-xs font-bold text-white truncate max-w-[110px]">
+                      {isLoggedIn ? user.name : "Sign in / Register"}
+                    </span>
+                  </div>
                 </div>
-                <FaChevronDown className="text-xs text-gray-400 ml-1" />
-              </div>
 
-              {isLoggedIn && showDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="font-bold text-gray-900 truncate text-sm">{user.name}</h3>
-                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                {showDropdown && (
+                  <div className="absolute right-0 top-full mt-0 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+                      <h3 className="font-bold text-gray-900 truncate text-sm">
+                        {isLoggedIn ? user.name : "Hello, Guest"}
+                      </h3>
+                      <p className="text-xs text-gray-500 truncate">
+                        {isLoggedIn ? user.email : "Welcome to our store!"}
+                      </p>
+                    </div>
+
+                    <div className="py-1">
+                      <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
+                      </Link>
+                      <Link href="/order" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
+                      </Link>
+                    </div>
+
+                    {!isLoggedIn ? (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
+                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
+                        >
+                          <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
+                          <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="py-1">
-                    <Link href="/profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                      <FaUser className="text-gray-400 text-base" /> <span>My Profile</span>
-                    </Link>
-                    <Link href="/order" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                      <FaBox className="text-gray-400 text-base" /> <span>My Orders</span>
-                    </Link>
-                    <Link href="/wishlist" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                      <FaHeart className="text-gray-400 text-base" /> <span>Wishlist</span>
-                    </Link>
-                  </div>
-                  <div className="border-t border-gray-100 pt-1">
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
-                      <FaSignOutAlt className="text-red-500 text-base" /> <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <button className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <FaTimes /> : <FaBars />}
-          </button>
-        </div>
-      </div>
-
-      {/* --- BOTTOM NAVBAR --- */}
-      <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-        <div className="container px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
-          <div
-            className="relative"
-            onMouseEnter={() => setIsCategoryOpen(true)}
-            onMouseLeave={resetCategoryMenu}
-          >
-            <button
-              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-2.5 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
-            >
-              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
-              <FaChevronDown className="text-xs text-gray-500 ml-2" />
-            </button>
-
-            <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
-              {/* LEVEL 1: Main Categories */}
-              <div className="w-64 bg-white h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 p-2 border border-gray-100 shadow-2xl ">
-                {loading ? (
-                  <div className="p-4 text-xs text-gray-500 text-center">Loading categories...</div>
-                ) : categoriesData.length === 0 ? (
-                  <div className="p-4 text-xs text-gray-500 text-center">No categories available</div>
-                ) : (
-                  <ul className="space-y-0.5 relative">
-                    {categoriesData.map((mainCat) => {
-                      const hasSub = mainCat.children && mainCat.children.length > 0;
-                      return (
-                        <li key={mainCat.id} className="relative">
-                          <div
-                            onMouseEnter={() => {
-                              setActiveMain(mainCat.id);
-                              setActiveSub(null);
-                            }}
-                            onClick={() => {
-                              resetCategoryMenu();
-                              router.push(`/FashionCategory/${mainCat.id}`);
-                            }}
-                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
-                              text-gray-700 hover:bg-gray-50 hover:text-black
-                              ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
-                          >
-                            <span className="flex-1 text-sm font-semibold">
-                              {mainCat.name}
-                            </span>
-
-                            {hasSub && (
-                              <FaChevronRight
-                                className={`text-xs ${activeMain === mainCat.id ? "text-blue-500" : "text-gray-400"}`}
-                              />
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
                 )}
               </div>
+            </div>
 
-              {/* LEVEL 2: Sub Categories Panel */}
-              {activeMainCat && activeMainCat.children && activeMainCat.children.length > 0 && (
-                <div
-                  onMouseEnter={() => setActiveMain(activeMainCat.id)}
-                  className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 shadow-2xl"
-                >
-                  <ul className="space-y-0.5">
-                    {activeMainCat.children.map((subCat) => {
-                      const hasChild = subCat.children && subCat.children.length > 0;
-                      return (
-                        <li key={subCat.id} className="relative">
+            <button className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <FaTimes /> : <FaBars />}
+            </button>
+          </div>
+        </div>
+
+        {/* --- BOTTOM NAVBAR --- */}
+        <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
+          <div className="container px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsCategoryOpen(true)}
+              onMouseLeave={resetCategoryMenu}
+            >
+              <button
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                className="flex items-center gap-2.5 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
+              >
+                <FaBars className="text-sm" /> <span>All Categories</span>{" "}
+                <FaChevronDown className="text-xs text-gray-500 ml-2" />
+              </button>
+
+              {/* Categories Dropdown Panels */}
+              <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
+                <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl">
+                  {loading ? (
+                    <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {categoriesData.map((mainCat) => (
+                        <li key={mainCat.id}>
                           <div
-                            onMouseEnter={() => setActiveSub(subCat.id)}
-                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
-                              text-gray-700 hover:bg-gray-50 hover:text-black
-                              ${activeSub === subCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                            onMouseEnter={() => { setActiveMain(mainCat.id); setActiveSub(null); }}
+                            onClick={() => { resetCategoryMenu(); router.push(`/FashionCategory/${mainCat.id}`); }}
+                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
                           >
-                            <Link
-                              href={`/ExploreProducts/${activeMainCat.slug}/${subCat.slug}`}
-                              onClick={resetCategoryMenu}
-                              className="flex-1 text-sm font-semibold"
-                            >
-                              {subCat.name}
-                            </Link>
-
-                            {hasChild && (
-                              <FaChevronRight
-                                className={`text-xs ${activeSub === subCat.id ? "text-blue-500" : "text-gray-400"}`}
-                              />
-                            )}
+                            <span className="text-sm font-semibold">{mainCat.name}</span>
+                            {mainCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
                           </div>
                         </li>
-                      );
-                    })}
-                  </ul>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              )}
 
-              {/* LEVEL 3: Child Categories Panel */}
-              {activeSubCat && activeSubCat.children && activeSubCat.children.length > 0 && (
-                <div
-                  onMouseEnter={() => {
-                    setActiveMain(activeMainCat.id);
-                    setActiveSub(activeSubCat.id);
-                  }}
-                  className="w-64 bg-white h-[420px] p-2 z-50 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 border-l border-gray-100 shadow-2xl "
-                >
-                  <ul className="space-y-0.5">
-                    {activeSubCat.children.map((childCat) => (
-                      <li key={childCat.id}>
-                        <Link
-                          href={`/ExploreProducts/${activeMainCat.slug}/${activeSubCat.slug}/${childCat.slug}`}
-                          onClick={resetCategoryMenu}
-                          className="block py-2 px-3 text-sm font-semibold transition rounded-md text-gray-700 hover:bg-gray-50 hover:text-black"
-                        >
-                          {childCat.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {activeMainCat?.children?.length > 0 && (
+                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto">
+                    <ul className="space-y-0.5">
+                      {activeMainCat.children.map((subCat) => (
+                        <li key={subCat.id}>
+                          <div
+                            onMouseEnter={() => setActiveSub(subCat.id)}
+                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeSub === subCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                          >
+                            <Link href={`/ExploreProducts/${activeMainCat.slug}/${subCat.slug}`} onClick={resetCategoryMenu} className="text-sm font-semibold flex-1">
+                              {subCat.name}
+                            </Link>
+                            {subCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
-            <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
-            <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
-            <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
-            <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
+              <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
+              <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
+              <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
+              <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden border-t py-6 px-4 bg-white text-gray-800 shadow-xl max-h-[calc(100vh-80px)] overflow-y-auto">
-          <div className="mb-6">
-            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="w-full bg-gray-100 text-gray-900 text-xs rounded-full pl-4 pr-12 py-2.5 focus:outline-none"
-              />
-              <button type="submit" className="absolute right-2 bg-black text-white p-1.5 rounded-full">
-                <FaSearch className="text-xs" />
+      {/* ==================================================== */}
+      {/* 🌟 BLURRED BACKGROUND MODAL POPUP (LOGIN & REGISTER) */}
+      {/* ==================================================== */}
+      {activeModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+         
+          {/* LOGIN MODAL */}
+          {activeModal === "login" && (
+            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
+             
+              <button
+                onClick={() => setActiveModal(null)}
+                className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
+              >
+                <FaTimes className="text-lg" />
               </button>
-            </form>
-          </div>
 
-          <div className="flex items-center justify-around gap-4 mb-6 pb-4 border-b border-gray-100">
-            <Link href="/wishlist" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold flex-1 justify-center">
-              <FaHeart className="text-red-500 text-base" />
-              <span>Wishlist</span>
-              {wishlistCount > 0 && (
-                <span className="bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
-
-            <Link href="/cartcom" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 bg-gray-50 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold flex-1 justify-center">
-              <FaShoppingCart className="text-blue-600 text-base" />
-              <span>Cart</span>
-              {cartCount > 0 && (
-                <span className="bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          </div>
-
-          {/* Mobile Categories Accordion */}
-          <div className="mb-6 border-b border-gray-100 pb-4">
-            <h4 className="text-xs font-bold uppercase text-gray-400 mb-2 px-3">Categories</h4>
-            <div className="max-h-64 overflow-y-auto">
-              {categoriesData.map((mainCat) => (
-                <details key={mainCat.id} className="border-b border-gray-50">
-                  <summary className="flex items-center justify-between py-2.5 px-3 text-sm font-semibold text-gray-700 cursor-pointer">
-                    {mainCat.name}
-                  </summary>
-
-                  {/* ✅ Mobile mein bhi parent category ka link FashionCategory page pr */}
-                  <Link
-                    href={`/FashionCategory/${mainCat.id}`}
-                    onClick={() => setMenuOpen(false)}
-                    className="block py-1.5 px-6 text-xs text-blue-600 font-semibold"
-                  >
-                    View All in {mainCat.name}
-                  </Link>
-
-                  {mainCat.children?.map((sub) => (
-                    <details key={sub.id} className="pl-4 border-t border-gray-50">
-                      <summary className="flex items-center justify-between py-2 px-3 text-xs font-semibold text-gray-600 cursor-pointer">
-                        {sub.name}
-                      </summary>
-                      <ul className="pl-4">
-                        {sub.children?.map((child) => (
-                          <li key={child.id}>
-                            <Link
-                              href={`/Categories/${mainCat.slug}/${sub.slug}/${child.slug}`}
-                              onClick={() => setMenuOpen(false)}
-                              className="block py-1.5 px-3 text-xs text-gray-500 hover:text-blue-600"
-                            >
-                              {child.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ))}
-                </details>
-              ))}
-            </div>
-          </div>
-
-          <ul className="flex flex-col gap-2 font-medium text-sm">
-            <li><Link href="/" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Home</Link></li>
-            <li><Link href="/products" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Products</Link></li>
-            <li><Link href="/Categories" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Categories</Link></li>
-            <li><Link href="/contact" onClick={() => setMenuOpen(false)} className="block py-2.5 px-3 rounded-lg hover:bg-gray-50 transition">Contact Us</Link></li>
-          </ul>
-
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl shadow-xs mt-6 p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-blue-600 flex items-center justify-center text-lg">
-                <FaUser />
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome Back</h2>
+                <p className="text-xs text-gray-500 mt-1">Please enter your credentials to log in to your account.</p>
               </div>
-              <div className="overflow-hidden">
-                <span className="block text-[10px] uppercase font-semibold text-gray-400">Welcome</span>
-                <h3 className="font-bold truncate text-sm text-gray-800">
-                  {isLoggedIn ? user.name : "Sign in / Register"}
-                </h3>
-              </div>
-            </div>
 
-            <div className="grid gap-2 mt-4">
-              {isLoggedIn && (
-                <>
-                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 bg-white border border-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-xs font-semibold shadow-2xs">
-                    <FaUser className="text-blue-500" /> My Profile
-                  </Link>
-                  <Link href="/order" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 bg-white border border-gray-200 text-gray-700 text-xs font-semibold shadow-2xs">
-                    <FaBox className="text-blue-500" /> My Orders
-                  </Link>
-                </>
+              {loginError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center font-medium">
+                  {loginError}
+                </div>
               )}
 
-              {isLoggedIn ? (
-                <button onClick={handleLogout} className="flex items-center gap-2.5 bg-red-50 text-red-600 py-2.5 px-4 rounded-xl text-xs font-semibold w-full cursor-pointer justify-center">
-                  <FaSignOutAlt /> Logout
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-semibold text-sm py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  <FaSignInAlt className="text-base" />
+                  <span>{loginLoading ? "Logging in..." : "Login"}</span>
                 </button>
-              ) : (
-                <Link href="/sign" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 bg-blue-600 text-white py-2.5 px-4 rounded-xl text-xs font-semibold justify-center shadow-md">
-                  <FaUser /> Sign In / Register
-                </Link>
-              )}
+              </form>
+
+              <div className="text-center mt-6">
+                <p className="text-xs text-gray-500">
+                  Don't have an account?{" "}
+                  <button
+                    onClick={() => { setLoginError(""); setActiveModal("register"); }}
+                    className="text-[#10b981] font-semibold hover:underline ml-1 cursor-pointer"
+                  >
+                    Create Account
+                  </button>
+                </p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* REGISTER MODAL */}
+          {activeModal === "register" && (
+            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
+             
+              <button
+                onClick={() => setActiveModal(null)}
+                className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
+              >
+                <FaTimes className="text-lg" />
+              </button>
+
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Create Account</h2>
+                <p className="text-xs text-gray-500 mt-1">Please fill in the details below to create your new account.</p>
+              </div>
+
+              {regError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center font-medium">
+                  {regError}
+                </div>
+              )}
+
+              <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={regLoading}
+                  className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-semibold text-sm py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  <FaUserPlus className="text-base" />
+                  <span>{regLoading ? "Creating..." : "Create Account"}</span>
+                </button>
+              </form>
+
+              <div className="text-center mt-5">
+                <p className="text-xs text-gray-500">
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => { setRegError(""); setActiveModal("login"); }}
+                    className="text-[#10b981] font-semibold hover:underline ml-1 cursor-pointer"
+                  >
+                    Login here
+                  </button>
+                </p>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
-    </nav>
+    </>
   );
 };
 
