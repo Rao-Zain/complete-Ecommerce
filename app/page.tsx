@@ -12,12 +12,12 @@ export default function Home() {
     <>
     <div className="bg-gray-50">
      <Hero />
-    <div className=" lg:px-3 mx-auto">
+    
  
   <Bestselling />
   <Banner />
   <Featured />
-  </div>
+  
   <Special />
  <div className="lg:px-3 md:px-1 mx-auto">
   <Brands/>

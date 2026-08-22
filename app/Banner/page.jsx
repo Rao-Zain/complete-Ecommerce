@@ -2,7 +2,8 @@ import Image from 'next/image';
 
 function Banners() {
   return (
-    <section className="max-w-9xl px-4 sm:px-6 lg:px-8 py-2">
+    <section className="container mx-auto  
+      py-2">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* Left Big Banner (Summer Collection) */}
