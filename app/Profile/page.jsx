@@ -18,22 +18,50 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Fetch profile data from API on mount
+  // Helper function to get headers with Bearer Token
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+  
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
+  // Helper to get logged-in user ID securely from localStorage
+  const getUserId = () => {
+    return localStorage.getItem('userId');
+  };
+
+  // Fetch profile data on mount using logged-in user ID
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await fetch('http://192.168.1.2:8008/api/profile');
-        if (!response.ok) {
+        const userId = getUserId();
+        const token = localStorage.getItem('token');
+
+        if (!userId || !token) {
+          toast.error('Please login first to view your profile.');
+          setLoading(false);
+          return;
+        }
+
+        const response_api = await fetch(`http://192.168.1.6:8008/api/profile/${userId}`, {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        });
+
+        if (!response_api.ok) {
           throw new Error('Failed to fetch profile data');
         }
-        const data = await response.json();
-        
-        // Assume API returns fields like name, email, phone, shippingAddress, profilePic
-        setName(data.name || '');
-        setEmail(data.email || '');
-        setPhone(data.phone || '');
-        setShippingAddress(data.shippingAddress || '');
-        setProfilePic(data.profilePic || '');
+        const response = await response_api.json();
+
+        // Setting state with the fetched data
+        setName(response.data.name || '');
+        setEmail(response.data.email || '');
+        setPhone(response.data.phone || '');
+        setShippingAddress(response.data.shippingAddress || '');
+        setProfilePic(response.data.profilePic || '');
       } catch (error) {
         console.error(error);
         toast.error('Failed to load profile data from server');
@@ -45,15 +73,19 @@ const Profile = () => {
     fetchProfileData();
   }, []);
 
-  // --- Handlers ---
+  // --- Profile Submit Handler (PUT Request) ---
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://192.168.1.2:8008/api/profile/2', {
-        method: 'PUT', // ya 'PATCH' jo bhi aapki API support kare
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const userId = getUserId();
+      if (!userId) {
+        toast.error('User ID not found. Please login again.');
+        return;
+      }
+
+      const response = await fetch(`http://192.168.1.6:8008/api/profile/${userId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name,
           email,
@@ -74,16 +106,36 @@ const Profile = () => {
     }
   };
 
-  const handlePasswordSubmit = (e) => {
+  // --- Password Submit Handler ---
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match!');
       return;
     }
-    toast.success('Password updated successfully!');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+
+    try {
+      const response = await fetch(`http://192.168.1.6:8008/api/profile/update-password`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update password');
+      }
+
+      toast.success('Password updated successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error updating password!');
+    }
   };
 
   const handleImageChange = (e) => {
@@ -113,8 +165,6 @@ const Profile = () => {
       <Toaster position="top-right" />
 
       <div className="container px-4 mx-auto sm:px-6 lg:px-10 space-y-6">
-
-        {/* Page Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Profile</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -123,10 +173,8 @@ const Profile = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-
           {/* LEFT 2 COLUMNS: Personal Information Card */}
           <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8">
-            {/* Section Header */}
             <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-100">
               <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
                 <User size={20} />
@@ -138,8 +186,6 @@ const Profile = () => {
             </div>
 
             <form onSubmit={handleProfileSubmit} className="space-y-6">
-
-              {/* Profile Picture Upload Section */}
               <div className="flex items-center space-x-6">
                 <div className="relative">
                   {profilePic ? (
@@ -154,7 +200,6 @@ const Profile = () => {
                     </div>
                   )}
 
-                  {/* Camera Icon Button */}
                   <label className="absolute -bottom-2 -right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer shadow-md transition-all">
                     <Camera size={14} />
                     <input
@@ -165,7 +210,6 @@ const Profile = () => {
                     />
                   </label>
 
-                  {/* Cross (Remove) Icon Button */}
                   {profilePic && (
                     <button
                       type="button"
@@ -183,10 +227,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Inputs Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Full Name */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Full Name</label>
                   <input
@@ -198,7 +239,6 @@ const Profile = () => {
                   />
                 </div>
 
-                {/* Email Address */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Email Address</label>
                   <input
@@ -210,7 +250,6 @@ const Profile = () => {
                   />
                 </div>
 
-                {/* Phone No */}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Phone Number</label>
                   <input
@@ -222,7 +261,6 @@ const Profile = () => {
                   />
                 </div>
 
-                {/* Shipping Address */}
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Shipping Address</label>
                   <textarea
@@ -233,10 +271,8 @@ const Profile = () => {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-800 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none transition-all text-sm resize-none"
                   />
                 </div>
-
               </div>
 
-              {/* Save Information Button */}
               <div className="pt-2">
                 <button
                   type="submit"
@@ -246,13 +282,11 @@ const Profile = () => {
                   <span>Save Information</span>
                 </button>
               </div>
-
             </form>
           </div>
 
           {/* RIGHT 1 COLUMN: Change Password Card */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8">
-            {/* Section Header */}
             <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-100">
               <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
                 <Lock size={20} />
@@ -264,7 +298,6 @@ const Profile = () => {
             </div>
 
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Current Password</label>
                 <input
@@ -310,12 +343,9 @@ const Profile = () => {
                   <span>Update Password</span>
                 </button>
               </div>
-
             </form>
           </div>
-
         </div>
-
       </div>
     </div>
   );

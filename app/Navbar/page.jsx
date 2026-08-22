@@ -41,7 +41,7 @@ const Navbar = () => {
   // Dropdown & Modal States
   const [showDropdown, setShowDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  
+
   // 🔥 Modal States (Login & Register Popups)
   const [activeModal, setActiveModal] = useState(null); // 'login' | 'register' | null
 
@@ -126,7 +126,7 @@ const Navbar = () => {
     setIsLoggedIn(false);
     setShowDropdown(false);
     window.dispatchEvent(new Event("authUpdated"));
-    
+
     // 🔥 Alert ki jagah ab seedha login modal show hoga
     setActiveModal("login");
   };
@@ -147,9 +147,9 @@ const Navbar = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json" 
+          "Accept": "application/json"
         },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
@@ -158,15 +158,17 @@ const Navbar = () => {
       console.log("Login Response Data:", data);
 
       if (res.ok) {
-        const userToken = data.token || data.access_token || data.data?.token; 
-        const userName = data.user?.name || data.name || data.data?.name || loginEmail.split("@")[0];
-        const userEmail = data.user?.email || data.email || data.data?.email || loginEmail;
-
+        const userToken = data.data.token || data.data.access_token || data.data.data?.token;
+        const userName = data.data.user?.name || data.data.name || data.data.data?.name || loginEmail.split("@")[0];
+        const userEmail = data.data.user?.email || data.data.email || data.data.data?.email || loginEmail;
+        const userId = data.data.user?.id;
+        console.log(data.data.user?.id);
         if (!userToken) {
           setLoginError("Login succeeded, but no token was returned by the server.");
           return;
         }
 
+        localStorage.setItem("userId", userId);
         localStorage.setItem("token", userToken);
         localStorage.setItem("userName", userName);
         localStorage.setItem("email", userEmail);
@@ -201,15 +203,15 @@ const Navbar = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/register`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json" 
+          "Accept": "application/json"
         },
-        body: JSON.stringify({ 
-          name: regName, 
-          email: regEmail, 
+        body: JSON.stringify({
+          name: regName,
+          email: regEmail,
           password: regPassword,
-          password_confirmation: regConfirmPassword 
+          password_confirmation: regConfirmPassword
         }),
       });
 
@@ -219,10 +221,12 @@ const Navbar = () => {
         const userToken = data.token || data.access_token || data.data?.token;
         const userName = data.user?.name || data.name || data.data?.name || regName;
         const userEmail = data.user?.email || data.email || data.data?.email || regEmail;
+        const userId = data.user?.id || data.id || data.data?.id;
 
         localStorage.setItem("token", userToken);
         localStorage.setItem("userName", userName);
         localStorage.setItem("email", userEmail);
+        localStorage.setItem("userId", userId);
 
         window.dispatchEvent(new Event("authUpdated"));
         setActiveModal(null);
@@ -231,7 +235,7 @@ const Navbar = () => {
         setRegPassword("");
         setRegConfirmPassword("");
       } else {
-        const errorMessage = data.message || 
+        const errorMessage = data.message ||
           (data.errors ? Object.values(data.errors)[0][0] : "Registration failed.");
         setRegError(errorMessage);
       }
@@ -454,11 +458,11 @@ const Navbar = () => {
       {/* ==================================================== */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-         
+
           {/* LOGIN MODAL */}
           {activeModal === "login" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
-             
+
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
@@ -529,7 +533,7 @@ const Navbar = () => {
           {/* REGISTER MODAL */}
           {activeModal === "register" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
-             
+
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
