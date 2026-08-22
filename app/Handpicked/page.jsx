@@ -30,8 +30,8 @@ function Handpicked() {
 
 
   return (
-    <main className="bg-gray-50 container min-h-screen mx-auto py-4">
-      <div className="max-w-7xl mx-auto">
+    <main className="bg-gray-50  min-h-screen  py-4">
+      <div className="mx-auto container mx-auto">
 
         {/* Header Section */}
         <div className="mb-8">
@@ -77,7 +77,7 @@ function Handpicked() {
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className=" grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {products.map((product) => {
             const firstVariant = product.variants?.[0];
             const price = firstVariant ? Number(firstVariant.price) : null;

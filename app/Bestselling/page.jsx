@@ -30,11 +30,11 @@ function Bestselling() {
   }, []);
 
   return (
-    <main className=" mx-auto px-3 sm:px-6 md:px-7 sm:pt-4 mb-2 sm:mb-4 lg:mb-2 flex justify-between items-center">
-      <div className=" mx-auto">
+    <main className="w-full mx-auto px-3 sm:px-6 md:px-7 sm:pt-4 mb-2 sm:mb-4 lg:mb-2 flex justify-between items-center">
+      <div className="w-full mx-auto">
         {/* Header Section */}
-        <div className="mb-8 items-center justify-center">
-          <div className="flex items-center gap-2">
+        <div className="mb-8 container mx-auto items-center justify-center">
+          <div className=" flex items-center gap-2">
             <Flame className="w-7 h-7 text-pink-600" />
 
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight leading-none">
@@ -47,70 +47,70 @@ function Bestselling() {
         </div>
 
         {/* Loading — shimmer skeleton grid */}
-      {loading && (
-  <div className="container mx-auto grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2">
-    {Array.from({ length: 10 }).map((_, i) => (
-      <div
-        key={i}
-        className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm"
-      >
-        {/* Image Container */}
-        <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse">
-
-          {/* Top Seller Skeleton */}
-          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 h-4 sm:h-5 w-14 sm:w-20 bg-gray-300 rounded animate-pulse" />
-
-          {/* Heart Skeleton */}
-          <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gray-300 rounded-full animate-pulse" />
-        </div>
-
-        {/* Product Info */}
-        <div className="p-2 sm:p-3 flex flex-col">
-
-          {/* Product Name */}
-          <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded animate-pulse" />
-
-          {/* Description */}
-          <div className="h-3 w-full bg-gray-200 rounded mt-1.5 animate-pulse" />
-
-          {/* Rating */}
-          <div className="flex items-center gap-1 mt-1.5 sm:mt-2">
-
-            {/* Stars */}
-            {Array.from({ length: 5 }).map((_, star) => (
+        {loading && (
+          <div className="container mx-auto grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2">
+            {Array.from({ length: 10 }).map((_, i) => (
               <div
-                key={star}
-                className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded-sm animate-pulse"
-              />
+                key={i}
+                className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm"
+              >
+                {/* Image Container */}
+                <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse">
+
+                  {/* Top Seller Skeleton */}
+                  <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 h-4 sm:h-5 w-14 sm:w-20 bg-gray-300 rounded animate-pulse" />
+
+                  {/* Heart Skeleton */}
+                  <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gray-300 rounded-full animate-pulse" />
+                </div>
+
+                {/* Product Info */}
+                <div className="p-2 sm:p-3 flex flex-col">
+
+                  {/* Product Name */}
+                  <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded animate-pulse" />
+
+                  {/* Description */}
+                  <div className="h-3 w-full bg-gray-200 rounded mt-1.5 animate-pulse" />
+
+                  {/* Rating */}
+                  <div className="flex items-center gap-1 mt-1.5 sm:mt-2">
+
+                    {/* Stars */}
+                    {Array.from({ length: 5 }).map((_, star) => (
+                      <div
+                        key={star}
+                        className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded-sm animate-pulse"
+                      />
+                    ))}
+
+                    {/* Rating Number */}
+                    <div className="h-3 w-7 bg-gray-200 rounded ml-1 animate-pulse" />
+                  </div>
+
+                  {/* Price & Stock */}
+                  <div className="flex items-start justify-between gap-1 mt-2">
+
+                    {/* Price */}
+                    <div className="flex flex-col gap-1">
+
+                      {/* Current Price */}
+                      <div className="h-4 sm:h-5 w-16 sm:w-20 bg-gray-200 rounded animate-pulse" />
+
+                      {/* Cut Price */}
+                      <div className="h-3 w-12 sm:w-16 bg-gray-200 rounded animate-pulse" />
+
+                    </div>
+
+                    {/* Stock Badge */}
+                    <div className="h-5 sm:h-6 w-16 sm:w-20 bg-gray-200 rounded-full animate-pulse" />
+
+                  </div>
+                </div>
+              </div>
             ))}
-
-            {/* Rating Number */}
-            <div className="h-3 w-7 bg-gray-200 rounded ml-1 animate-pulse" />
           </div>
-
-          {/* Price & Stock */}
-          <div className="flex items-start justify-between gap-1 mt-2">
-
-            {/* Price */}
-            <div className="flex flex-col gap-1">
-
-              {/* Current Price */}
-              <div className="h-4 sm:h-5 w-16 sm:w-20 bg-gray-200 rounded animate-pulse" />
-
-              {/* Cut Price */}
-              <div className="h-3 w-12 sm:w-16 bg-gray-200 rounded animate-pulse" />
-
-            </div>
-
-            {/* Stock Badge */}
-            <div className="h-5 sm:h-6 w-16 sm:w-20 bg-gray-200 rounded-full animate-pulse" />
-
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
+        )}
 
         {/* Error / empty state */}
         {!loading && (error || products.length === 0) && (
