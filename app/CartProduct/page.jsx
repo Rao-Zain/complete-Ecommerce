@@ -20,14 +20,14 @@ export default function CartPage() {
         const storedUserID = localStorage.getItem("userID");
         setUserID(storedUserID);
 
-        const localCart = localStorage.getItem("cart");
-        if (localCart) {
-            try {
-                setCartItems(JSON.parse(localCart));
-            } catch (e) {
-                console.error("Error parsing local cart", e);
-            }
-        }
+        // const localCart = localStorage.getItem("cart");
+        // if (localCart) {
+        //     try {
+        //         setCartItems(JSON.parse(localCart));
+        //     } catch (e) {
+        //         console.error("Error parsing local cart", e);
+        //     }
+        // }
 
         if (!storedUserID) {
             setLoading(false);
