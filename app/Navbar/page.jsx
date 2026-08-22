@@ -295,7 +295,7 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link href="/cartcom" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
                 {cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
