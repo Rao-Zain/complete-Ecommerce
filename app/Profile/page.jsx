@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Camera, Check, ShieldCheck, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { API_BASE_URL } from "@/lib/config";
+
 
 const Profile = () => {
   // --- Profile Info States ---
@@ -46,7 +48,7 @@ const Profile = () => {
           return;
         }
 
-        const response_api = await fetch(`http://192.168.1.6:8008/api/profile/${userId}`, {
+        const response_api = await fetch(`${API_BASE_URL}/api/profile/${userId}`, {
           method: 'GET',
           headers: getAuthHeaders(),
         });
@@ -83,7 +85,7 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch(`http://192.168.1.6:8008/api/profile/update/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/profile/update/${userId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -115,7 +117,7 @@ const Profile = () => {
     }
 
     try {
-      const response = await fetch(`http://192.168.1.6:8008/api/profile/update/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/profile/update/${userId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
