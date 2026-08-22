@@ -47,7 +47,7 @@ const Hero = () => {
   }
 
   return (
-    <div>
+    <div >
       <Swiper
         modules={[Autoplay, Pagination]}
         autoplay={{

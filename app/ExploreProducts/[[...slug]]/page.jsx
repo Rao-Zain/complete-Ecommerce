@@ -417,7 +417,7 @@ const ExploreProducts = () => {
                                             key={product.id}
                                             className="bg-white rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300 group w-full border border-gray-100 flex flex-col justify-between"
                                         >
-                                            <Link href={`/product/${product.slug}`} className="flex flex-col h-full w-full">
+                                            <Link href={`/Productdetail/${product.slug}`} className="flex flex-col h-full w-full">
                                                 <div className="relative bg-gray-100 overflow-hidden">
                                                     <img
                                                         src={imagePath}
