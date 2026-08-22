@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Camera, Check, ShieldCheck, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { API_BASE_URL } from '@/lib/config';
 
 const Profile = () => {
   // --- Profile Info States ---
@@ -22,7 +23,7 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await fetch('http://192.168.1.2:8008/api/profile');
+        const response = await fetch(`${API_BASE_URL}/api/profile`);
         if (!response.ok) {
           throw new Error('Failed to fetch profile data');
         }
@@ -49,7 +50,7 @@ const Profile = () => {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://192.168.1.2:8008/api/profile/2', {
+      const response = await fetch(`${API_BASE_URL}/api/profile/2`, {
         method: 'PUT', // ya 'PATCH' jo bhi aapki API support kare
         headers: {
           'Content-Type': 'application/json',

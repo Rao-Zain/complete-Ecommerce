@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FaShoppingCart, FaStar, FaArrowLeft, FaCheck, FaHeart, FaChevronDown, FaChevronUp } from "react-icons/fa";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.2:8008";
+import { API_BASE_URL } from '@/lib/config';
+
+const BASE_URL = API_BASE_URL;
 
 // Shimmer Loader for the Shop Page
 const ShopShimmer = () => {

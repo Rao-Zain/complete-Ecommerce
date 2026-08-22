@@ -19,14 +19,14 @@ export default function Home() {
   <Featured />
   
   <Special />
- <div className="lg:px-3 md:px-1 mx-auto">
+
   <Brands/>
-</div>
+
 
   <Official />
-   <div className="px-3  mx-auto">
+ 
  <Handpicked />
- </div>
+
  </div>
   </>
 
