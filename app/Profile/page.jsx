@@ -83,8 +83,8 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch(`http://192.168.1.6:8008/api/profile/${userId}`, {
-        method: 'PUT',
+      const response = await fetch(`http://192.168.1.6:8008/api/profile/update/${userId}`, {
+        method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           name,
@@ -115,8 +115,8 @@ const Profile = () => {
     }
 
     try {
-      const response = await fetch(`http://192.168.1.6:8008/api/profile/update-password`, {
-        method: 'PUT',
+      const response = await fetch(`http://192.168.1.6:8008/api/profile/update/${userId}`, {
+        method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           currentPassword,
