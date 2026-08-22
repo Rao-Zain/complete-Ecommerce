@@ -18,6 +18,7 @@ export default function CartPage() {
     // LocalStorage se userID aur cart load karna (Client side only)
     useEffect(() => {
         const storedUserID = localStorage.getItem("userID");
+        alert(storedUserID)
         setUserID(storedUserID);
 
         // const localCart = localStorage.getItem("cart");
