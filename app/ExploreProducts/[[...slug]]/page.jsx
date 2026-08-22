@@ -159,9 +159,9 @@ const ExploreProducts = () => {
 
     const handleCategoryClick = (categoryPath) => {
         if (categoryPath) {
-            router.push(`/exploreProducts/${categoryPath}`);
+            router.push(`/ExploreProducts/${categoryPath}`);
         } else {
-            router.push(`/exploreProducts`);
+            router.push(`/ExploreProducts`);
         }
     };
 
@@ -296,6 +296,7 @@ const ExploreProducts = () => {
                                                                                     key={childCat.id}
                                                                                     type="button"
                                                                                     onClick={() => handleCategoryClick(`${parentCat.slug}/${subCat.slug}/${childCat.slug}`)}
+
                                                                                     className={`text-[11px] text-left py-1 px-2 rounded transition cursor-pointer border-none ${isChildSelected ? 'bg-black text-white font-bold' : 'text-gray-500 hover:text-black bg-transparent'}`}
                                                                                 >
                                                                                     - {childCat.name}
@@ -475,7 +476,7 @@ const ExploreProducts = () => {
                                                     <img
                                                         src={imagePath}
                                                         alt={product.name}
-                                                        className="w-full h-48 lg:h-40 object-cover group-hover:scale-105 transition duration-300"
+                                                        className="w-full h-48 lg:h-48 object-cover group-hover:scale-105 transition duration-300"
                                                     />
                                                 </Link>
                                             </div>
@@ -488,7 +489,7 @@ const ExploreProducts = () => {
                                                             {product.name}
                                                         </h2>
                                                     </Link>
-                                                    <p className="text-[11px] text-gray-500 line-clamp-1">
+                                                    <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
                                                         {product.short_description || "Explore high quality and comfortable material..."}
                                                     </p>
 
@@ -502,7 +503,7 @@ const ExploreProducts = () => {
                                                 </div>
 
                                                 {/* Price and Stock Section */}
-                                                <div className=" flex items-center justify-between gap-2">
+                                                <div className=" flex items-center justify-between gap-2 mt-1">
                                                     {/* Price & Cut Price (Stacked Vertically) */}
                                                     <div className="flex flex-col">
                                                         <h3 className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">

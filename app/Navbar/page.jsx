@@ -182,7 +182,7 @@ const Navbar = () => {
               )}
             </Link>
 
-            <Link href="/cartcom" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+            <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
               <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -283,7 +283,7 @@ const Navbar = () => {
                             }}
                             onClick={() => {
                               resetCategoryMenu();
-                              router.push(`/FashionCategory/${mainCat.id}`);
+                              router.push(`/FashionCategory/${mainCat.slug}`);
                             }}
                             className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
                               text-gray-700 hover:bg-gray-50 hover:text-black
@@ -374,7 +374,7 @@ const Navbar = () => {
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
             <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
             <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
-            <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
+            <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2">Categories</Link>
             <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
           </div>
         </div>
