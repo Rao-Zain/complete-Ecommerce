@@ -77,7 +77,7 @@ function Handpicked() {
         )}
 
         {/* Products Grid */}
-        <div className=" grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className=" grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {products.map((product) => {
             const firstVariant = product.variants?.[0];
             const price = firstVariant ? Number(firstVariant.price) : null;

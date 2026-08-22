@@ -78,7 +78,7 @@ function Featured() {
 
         {/* Products Grid */}
         {!loading && !error && products.length > 0 && (
-          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 ">
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 ">
             {products.map((product) => {
               const firstVariant = product.variants?.[0];
               const price = firstVariant ? Number(firstVariant.price) : null;
@@ -110,7 +110,7 @@ function Featured() {
                     className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between"
                   >
                     {/* Image & Badges Container */}
-                    <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full">
+                    <div className="relative bg-gray-100 h-34 xs:h-36 sm:h-44 md:h-48 w-full">
                       {product.product_type === "featured" && (
                         <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-yellow-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
                           Featured
