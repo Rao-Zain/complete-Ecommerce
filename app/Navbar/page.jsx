@@ -252,74 +252,38 @@ const Navbar = () => {
   const activeSubCat = activeMainCat?.children?.find((s) => s.id === activeSub);
 
   return (
-    <nav className="sticky top-0 z-50 bg-black text-white relative shadow-md">
-      <div className=" px-4 mx-auto sm:px-6 lg:px-10">
-        {/* Header */}
-        <div className="flex justify-between items-center h-20">
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div>
-              <h2 className="font-extrabold text-2xl tracking-tight text-white">
-                Shop<span className="text-blue-500">Nest</span>
-              </h2>
-            </div>
-          </Link>
-
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
-            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, brands and more..."
-                className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner"
-              />
-              <div className="absolute right-2 flex items-center gap-2">
-                <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
-                  <FaQrcode className="text-base" />
-                </button>
-                <button type="submit" className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 transition">
-                  <FaSearch className="text-sm" />
-                </button>
+    <>
+      <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
+        <div className="container px-4 mx-auto sm:px-6 lg:px-10">
+          {/* Header */}
+          <div className="flex justify-between items-center h-20">
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+              <div>
+                <h2 className="font-extrabold text-2xl tracking-tight text-white">
+                  Shop<span className="text-blue-500">Nest</span>
+                </h2>
               </div>
-            </form>
-          </div>
-
-          <div className="hidden md:flex items-center flex-shrink-0">
-            <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-              <FaHeart className="text-xl hover:text-red-500 transition" />
-              {wishlistCount > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {wishlistCount}
-                </span>
-              )}
             </Link>
 
-            <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-              <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
-              {cartCount > 0 && (
-                <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-
-            <div className="relative ml-2">
-              <div
-                onClick={() => {
-                  if (!isLoggedIn) {
-                    router.push("/sign");
-                  } else {
-                    setShowDropdown(!showDropdown);
-                  }
-                }}
-                className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-gray-800 border border-transparent transition p-1.5"
-              >
-                <div className="text-white flex items-center justify-center text-lg">
-                  <FaUser />
+            <div className="hidden md:flex flex-1 max-w-xl mx-8">
+              <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products, brands and more..."
+                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner"
+                />
+                <div className="absolute right-2 flex items-center gap-2">
+                  <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
+                    <FaQrcode className="text-base" />
+                  </button>
+                  <button type="submit" className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 transition">
+                    <FaSearch className="text-sm" />
+                  </button>
                 </div>
-             
+              </form>
             </div>
-            
 
             <div className="hidden md:flex items-center flex-shrink-0">
               <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
@@ -378,62 +342,32 @@ const Navbar = () => {
                       </p>
                     </div>
 
-      {/* --- BOTTOM NAVBAR --- */}
-      <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-        <div className=" px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
-          <div
-            className="relative"
-            onMouseEnter={() => setIsCategoryOpen(true)}
-            onMouseLeave={resetCategoryMenu}
-          >
-            <button
-              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-2.5 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
-            >
-              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
-              <FaChevronDown className="text-xs text-gray-500 ml-2" />
-            </button>
+                    <div className="py-1">
+                      <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
+                      </Link>
+                      <Link href="/order" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
+                      </Link>
+                    </div>
 
-            <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
-              {/* LEVEL 1: Main Categories */}
-              <div className="w-64 bg-white h-[420px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-gray-50 [&::-webkit-scrollbar-thumb]:bg-gray-200 p-2 border border-gray-100 shadow-2xl ">
-                {loading ? (
-                  <div className="p-4 text-xs text-gray-500 text-center">Loading categories...</div>
-                ) : categoriesData.length === 0 ? (
-                  <div className="p-4 text-xs text-gray-500 text-center">No categories available</div>
-                ) : (
-                  <ul className="space-y-0.5 relative">
-                    {categoriesData.map((mainCat) => {
-                      const hasSub = mainCat.children && mainCat.children.length > 0;
-                      return (
-                        <li key={mainCat.id} className="relative">
-                          <div
-                            onMouseEnter={() => {
-                              setActiveMain(mainCat.id);
-                              setActiveSub(null);
-                            }}
-                            onClick={() => {
-                              resetCategoryMenu();
-                              router.push(`/FashionCategory/${mainCat.slug}`);
-                            }}
-                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer transition
-                              text-gray-700 hover:bg-gray-50 hover:text-black
-                              ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
-                          >
-                            <span className="flex-1 text-sm font-semibold">
-                              {mainCat.name}
-                            </span>
-
-                            {hasSub && (
-                              <FaChevronRight
-                                className={`text-xs ${activeMain === mainCat.id ? "text-blue-500" : "text-gray-400"}`}
-                              />
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                    {!isLoggedIn ? (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
+                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
+                        >
+                          <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
+                          <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -505,11 +439,12 @@ const Navbar = () => {
               </div>
             </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
-            <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
-            <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
-            <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2">Categories</Link>
-            <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
+              <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
+              <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
+              <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
+              <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
+            </div>
           </div>
         </div>
       </nav>
