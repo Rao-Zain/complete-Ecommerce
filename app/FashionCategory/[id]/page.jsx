@@ -198,7 +198,7 @@ const FashionCategory = () => {
                             <FaHeart className="text-xs" />
                           </button>
 
-                          <Link href={`/product/${product.slug}`}>
+                          <Link href={`/Productdetail/${product.slug}`}>
                             <img
                               src={imagePath}
                               alt={product.name}
@@ -210,7 +210,7 @@ const FashionCategory = () => {
                         {/* Card Content */}
                         <div className="p-3 flex flex-col justify-between flex-grow">
                           <div>
-                            <Link href={`/product/${product.slug}`}>
+                            <Link href={`/Productdetail/${product.slug}`}>
                               <h2 className="text-sm font-bold text-gray-800 line-clamp-1 hover:text-black">
                                 {product.name}
                               </h2>

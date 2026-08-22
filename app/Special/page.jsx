@@ -21,12 +21,12 @@ function Special() {
         </span>
 
         {/* Main Heading */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-2xl">
+        <h2 className="text-xl sm:text-3xl md:text-5xl font-extrabold text-white/100 tracking-tight mb-1 sm:mb-4">
           Discover Excellence in Every Detail
-        </h1>
+        </h2>
 
         {/* Description Paragraph */}
-        <p className="text-gray-300 text-xs sm:text-sm mt-2 max-w-xl leading-relaxed">
+        <p className="text-gray-300 text-[11px] sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-none">
           Our handpicked featured collection brings you unmatched quality, trendsetting designs, and everyday reliability. Upgrade your style and elevate your lifestyle today.
         </p>
 
