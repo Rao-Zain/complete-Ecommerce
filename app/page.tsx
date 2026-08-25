@@ -8,6 +8,7 @@ import Brands from "./Brands/page"
 import Official from "./Official/page"
 import Handpicked from "./Handpicked/page"
 export default function Home() {
+  
   return (
     <>
     <div className="bg-gray-50">

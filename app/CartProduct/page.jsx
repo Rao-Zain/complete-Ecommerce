@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowRight, FaTimes } from "react-icons/fa";
 import Link from "next/link";
-// import defaultimg from "@/assets/default_img.png"; // Apne path ke mutabiq adjust kar lein
 
-// API_BASE_URL ko apni API ke mutabiq set karein
-// const API_BASE_URL = "https://your-api-domain.com";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 
@@ -15,10 +12,10 @@ export default function CartPage() {
     const [loading, setLoading] = useState(true);
     const [userID, setUserID] = useState(null);
 
-    // LocalStorage se userID aur cart load karna (Client side only)
+   
     useEffect(() => {
-        const storedUserID = localStorage.getItem("userID");
-        alert(storedUserID)
+        const storedUserID = localStorage.getItem("userId");
+        // alert(storedUserID)
         setUserID(storedUserID);
 
         // const localCart = localStorage.getItem("cart");
@@ -53,7 +50,7 @@ export default function CartPage() {
             });
     }, []);
 
-    // Helper function to update backend DB quantity
+    
     const updateQuantityInDB = (cartId, userId, newQty) => {
         if (!userId) return;
         fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
@@ -72,7 +69,7 @@ export default function CartPage() {
             .catch((err) => console.error("Database update error:", err));
     };
 
-    // Delete Item Function
+   
     const removeItem = (id) => {
         const updatedItems = cartItems.filter(
             (item) => String(item.id) !== String(id)
@@ -90,7 +87,7 @@ export default function CartPage() {
         }).catch((err) => console.error("API error:", err));
     };
 
-    // Increase Quantity
+    
     const increaseQty = (id) => {
         let newQty = 1;
         const updated = cartItems.map((item) => {
@@ -107,7 +104,7 @@ export default function CartPage() {
         updateQuantityInDB(id, userID, newQty);
     };
 
-    // Decrease Quantity
+    
     const decreaseQty = (id) => {
         let newQty = 1;
         let shouldUpdate = false;
@@ -129,7 +126,7 @@ export default function CartPage() {
         }
     };
 
-    // Image path extractor
+    
     const getProductImage = (item) => {
         const variant = item?.variant;
 
@@ -144,7 +141,8 @@ export default function CartPage() {
             variant?.image_path ||
             variant?.image;
 
-        if (!path) return defaultimg.src;
+        
+        if (!path) return "/placeholder.png";
 
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return path;
@@ -198,7 +196,7 @@ export default function CartPage() {
                     </div>
                 ) : (
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
-                        {/* Cart Items List */}
+                        
                         <div className="lg:col-span-2 space-y-4">
                             {cartItems.map((item) => {
                                 const variant = item.variant;
@@ -209,7 +207,7 @@ export default function CartPage() {
                                         key={item.id}
                                         className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all"
                                     >
-                                        {/* Product Details Section */}
+                                     
                                         <div className="flex items-center gap-4 w-full sm:w-auto">
                                             <img
                                                 src={getProductImage(item)}
@@ -233,7 +231,7 @@ export default function CartPage() {
                                             </div>
                                         </div>
 
-                                        {/* Quantity & Delete Controls */}
+                                        
                                         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
                                             <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
                                                 <button
@@ -270,7 +268,7 @@ export default function CartPage() {
                             })}
                         </div>
 
-                        {/* Cart Summary Card */}
+                        
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
                             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#00A651]"></span>

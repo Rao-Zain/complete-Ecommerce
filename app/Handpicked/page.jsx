@@ -4,19 +4,52 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import Link from "next/link";
+console.log(API_BASE_URL)
+// Reads a cookie by name — only needed as a fallback if credentials:"include"
+// alone doesn't get the guest_unique_token cookie to your API (e.g. cross-domain).
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+}
 
 function Handpicked() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
   useEffect(() => {
     const fetchfeatured = async () => {
+      setLoading(true);
+      setError(false);
+
       try {
-        const res = await fetch(`${API_BASE_URL}/api/products/for-you`);
+        // const guestToken = getCookie("guest_unique_token"); // fallback, see below
+
+        const res = await fetch(`${API_BASE_URL}/api/products/for-you?page=${page}`, {
+          method: "GET",
+          credentials: "include", // sends guest_unique_token cookie automatically
+          headers: {
+            Accept: "application/json",
+            // Uncomment this if the cookie alone isn't reaching the backend:
+            // ...(guestToken && { "X-Guest-Token": guestToken }),
+          },
+        });
+
         if (!res.ok) throw new Error("Failed to fetch For You Products");
         const response = await res.json();
-        setProducts(response.data || []);
+
+        // Handles a few common Laravel paginate() response shapes defensively
+        const items = response.data?.data || response.data || [];
+        const meta = response.data?.meta || response.meta || response;
+
+        setProducts(items);
+        setLastPage(meta?.last_page || 1);
+        setTotal(meta?.total ?? items.length);
       } catch (err) {
         console.error("Error fetching For You Products:", err);
         setError(true);
@@ -26,13 +59,48 @@ function Handpicked() {
     };
 
     fetchfeatured();
-  }, []);
+    // Scroll user back to the top of this section when the page changes
+    // so pagination clicks feel responsive on long pages.
+    if (typeof window !== "undefined" && page !== 1) {
+      const section = document.getElementById("handpicked-section");
+      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [page]);
 
+  const handlePrev = () => {
+    setPage((p) => Math.max(1, p - 1));
+  };
+
+  const handleNext = () => {
+    setPage((p) => Math.min(lastPage, p + 1));
+  };
+
+  const handlePageClick = (p) => {
+    setPage(p);
+  };
+
+  // Builds a compact page-number list: 1 ... current-1 current current+1 ... last
+  const getPageNumbers = () => {
+    const pages = [];
+    const delta = 1;
+
+    for (let i = 1; i <= lastPage; i++) {
+      if (
+        i === 1 ||
+        i === lastPage ||
+        (i >= page - delta && i <= page + delta)
+      ) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== "...") {
+        pages.push("...");
+      }
+    }
+    return pages;
+  };
 
   return (
-    <main className="bg-gray-50  min-h-screen  py-4">
-      <div className="mx-auto container mx-auto">
-
+    <main id="handpicked-section" className="bg-gray-50 min-h-screen py-4">
+      <div className="mx-auto container">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2">
@@ -77,27 +145,26 @@ function Handpicked() {
         )}
 
         {/* Products Grid */}
-        <div className=" grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {products.map((product) => {
-            const firstVariant = product.variants?.[0];
-            const price = firstVariant ? Number(firstVariant.price) : null;
-            const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
+        {!loading && !error && products.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {products.map((product) => {
+              const firstVariant = product.variants?.[0];
+              const price = firstVariant ? Number(firstVariant.price) : null;
+              const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
 
-            const totalStock =
-              product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+              const totalStock =
+                product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
 
-            // Only count approved reviews
-            const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
-            const avgRating =
-              reviews.length > 0
-                ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-                : 0;
+              const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
+              const avgRating =
+                reviews.length > 0
+                  ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                  : 0;
 
-            const imagePath = product.main_variant_image?.image_path;
+              const imagePath = product.main_variant_image?.image_path;
 
-             return (
-
-                 <Link
+              return (
+                <Link
                   href={`/Productdetail/${product.slug}`}
                   key={product.id}
                   className="bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
@@ -151,14 +218,15 @@ function Handpicked() {
                         />
 
                         {/* Rating */}
-                        <div className="flex items-center  mt-1.5 sm:mt-1">
+                        <div className="flex items-center mt-1.5 sm:mt-1">
                           {[...Array(5)].map((_, i) => (
                             <svg
                               key={i}
-                              className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(avgRating)
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300 fill-gray-200"
-                                }`}
+                              className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                                i < Math.floor(avgRating)
+                                  ? "text-yellow-400 fill-yellow-400"
+                                  : "text-gray-300 fill-gray-200"
+                              }`}
                               viewBox="0 0 24 24"
                             >
                               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -187,17 +255,64 @@ function Handpicked() {
                           </div>
 
                           <span className="bg-emerald-100 mt-1.5 rounded-full text-emerald-700 text-[10px] sm:text-[11px] font-medium px-1 sm:px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap self-start">
-                            <span className="text-emerald-800 font-bold text-[10px]">{totalStock}</span>  In Stock
+                            <span className="text-emerald-800 font-bold text-[10px]">{totalStock}</span> In Stock
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
-
                 </Link>
               );
-          })}
-        </div>
+            })}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && !error && lastPage > 1 && (
+          <div className="flex flex-col items-center gap-2 mt-8">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                onClick={handlePrev}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Prev
+              </button>
+
+              {getPageNumbers().map((p, idx) =>
+                p === "..." ? (
+                  <span key={`dots-${idx}`} className="px-2 text-xs sm:text-sm text-gray-400">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => handlePageClick(p)}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xs sm:text-sm rounded-md border transition-colors ${
+                      page === p
+                        ? "bg-black text-white border-black"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={handleNext}
+                disabled={page === lastPage}
+                className="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+
+            <p className="text-[11px] sm:text-xs text-gray-400">
+              Page {page} of {lastPage} · {total} items total
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );

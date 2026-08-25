@@ -77,7 +77,7 @@ function Products() {
 
 
         {/* Products Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
   {products.map((product) => {
 
     const firstVariant = product.variants?.[0];
@@ -103,7 +103,7 @@ function Products() {
       >
         <div>
           {/* Image & Badges Container */}
-          <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full">
+          <div className="relative bg-gray-100 lg:h-56 xs:h-36 sm:h-44 md:h-48 w-full">
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -140,7 +140,7 @@ function Products() {
             />
 
             {/* Rating */}
-            <div className="flex items-center gap-0.5 sm:gap-1 mt-1.5 sm:mt-2">
+            <div className="flex items-center mt-1.5 sm:mt-2">
               {[...Array(5)].map((_, i) => (
                 <svg
                   key={i}
@@ -158,12 +158,7 @@ function Products() {
               </span>
             </div>
 
-            {/* Latest review snippet */}
-            {totalReviews > 0 && latestReview && (
-              <p className="text-[10px] sm:text-[11px] text-gray-500 italic mt-1 sm:mt-1.5 line-clamp-2">
-                "{latestReview.comment}"
-              </p>
-            )}
+          
 
             {/* Pricing & Stock */}
             <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-gray-100">

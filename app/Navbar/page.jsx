@@ -109,9 +109,9 @@ const Navbar = () => {
     return () => window.removeEventListener("wishlistUpdated", updateCount);
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     const updateCart = () => {
-      const cart = JSON.parse(localStorage.getItem("cartItems")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
       const total = cart.reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(total);
     };
