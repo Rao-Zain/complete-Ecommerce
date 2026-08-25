@@ -9,6 +9,16 @@ function Handpicked() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // Wishlist state — synced with localStorage "wishlist" key (same key Navbar/Wishlist/Bestselling/Featured use)
+  const [wishlistIds, setWishlistIds] = useState([]);
+
+  // Safely read + trim auth token from localStorage
+  const getAuthToken = () => {
+    if (typeof window === "undefined") return null;
+    const rawToken = localStorage.getItem("token");
+    return rawToken ? rawToken.trim() : null;
+  };
+
   useEffect(() => {
     const fetchfeatured = async () => {
       try {
@@ -27,6 +37,71 @@ function Handpicked() {
     fetchfeatured();
   }, []);
 
+  // Load current wishlist ids on mount + keep in sync if changed elsewhere
+  useEffect(() => {
+    const loadWishlist = () => {
+      const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
+      setWishlistIds(stored);
+    };
+    loadWishlist();
+    window.addEventListener("wishlistUpdated", loadWishlist);
+    window.addEventListener("storage", loadWishlist);
+    return () => {
+      window.removeEventListener("wishlistUpdated", loadWishlist);
+      window.removeEventListener("storage", loadWishlist);
+    };
+  }, []);
+
+  const toggleWishlist = async (productId) => {
+    const userId = localStorage.getItem("userId");
+    const token = getAuthToken();
+
+    if (!userId || !token) {
+      alert("Wishlist mein add karne ke liye pehle login karein");
+      return;
+    }
+
+    const numericUserId = Number(userId);
+    const numericProductId = Number(productId);
+
+    const isWishlisted = wishlistIds.includes(numericProductId);
+    const updated = isWishlisted
+      ? wishlistIds.filter((id) => id !== numericProductId)
+      : [...wishlistIds, numericProductId];
+
+    // 1. UI + localStorage turant update (heart fill + navbar counter dono sync)
+    setWishlistIds(updated);
+    localStorage.setItem("wishlist", JSON.stringify(updated));
+    window.dispatchEvent(new Event("wishlistUpdated"));
+
+    // 2. Backend ko toggle bhejo — Authorization header zaroori hai warna 401 aata hai
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: numericUserId,
+          product_id: numericProductId,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(resData.message || "Wishlist update failed");
+      }
+    } catch (err) {
+      console.error("Wishlist toggle error:", err);
+      // Rollback on failure
+      setWishlistIds(wishlistIds);
+      localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
+      window.dispatchEvent(new Event("wishlistUpdated"));
+    }
+  };
 
   return (
     <main className="bg-gray-50  min-h-screen py-10 px-4 sm:px-6 lg:px-8">
@@ -95,6 +170,7 @@ function Handpicked() {
         : 0;
 
     const imagePath = product.main_variant_image?.image_path;
+    const isWishlisted = wishlistIds.includes(product.id);
 
     return (
       <div
@@ -109,8 +185,17 @@ function Handpicked() {
             </span>
           )}
 
-          <button className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button
+            onClick={() => toggleWishlist(product.id)}
+            className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
+            title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+          >
+            <svg
+              className={`w-4 h-4 ${
+                isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
+              }`}
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

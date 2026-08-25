@@ -42,7 +42,7 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // 🔥 Modal States (Login & Register Popups)
+  // Modal States (Login & Register Popups)
   const [activeModal, setActiveModal] = useState(null); // 'login' | 'register' | null
 
   // Login Form States
@@ -106,7 +106,11 @@ const Navbar = () => {
     };
     updateCount();
     window.addEventListener("wishlistUpdated", updateCount);
-    return () => window.removeEventListener("wishlistUpdated", updateCount);
+    window.addEventListener("storage", updateCount);
+    return () => {
+      window.removeEventListener("wishlistUpdated", updateCount);
+      window.removeEventListener("storage", updateCount);
+    };
   }, []);
 
   useEffect(() => {
@@ -126,8 +130,9 @@ const Navbar = () => {
     setIsLoggedIn(false);
     setShowDropdown(false);
     window.dispatchEvent(new Event("authUpdated"));
+    window.dispatchEvent(new Event("wishlistUpdated"));
 
-    // 🔥 Alert ki jagah ab seedha login modal show hoga
+    // Alert ki jagah ab seedha login modal show hoga
     setActiveModal("login");
   };
 
@@ -174,6 +179,7 @@ const Navbar = () => {
         localStorage.setItem("email", userEmail);
 
         window.dispatchEvent(new Event("authUpdated"));
+        window.dispatchEvent(new Event("wishlistUpdated"));
         setActiveModal(null);
         setLoginEmail("");
         setLoginPassword("");
@@ -229,6 +235,7 @@ const Navbar = () => {
         localStorage.setItem("userId", userId);
 
         window.dispatchEvent(new Event("authUpdated"));
+        window.dispatchEvent(new Event("wishlistUpdated"));
         setActiveModal(null);
         setRegName("");
         setRegEmail("");
@@ -290,7 +297,7 @@ const Navbar = () => {
             </div>
 
             <div className="hidden md:flex items-center flex-shrink-0">
-              <Link href="/wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/Wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaHeart className="text-xl hover:text-red-500 transition" />
                 {wishlistCount > 0 && (
                   <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -454,7 +461,7 @@ const Navbar = () => {
       </nav>
 
       {/* ==================================================== */}
-      {/* 🌟 BLURRED BACKGROUND MODAL POPUP (LOGIN & REGISTER) */}
+      {/* BLURRED BACKGROUND MODAL POPUP (LOGIN & REGISTER) */}
       {/* ==================================================== */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
