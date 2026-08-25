@@ -122,7 +122,7 @@ const Contact = () => {
                                         placeholder=" "
                                         onChange={handleChange}
                                         required
-                                        className="peer w-full border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
+                                        className="peer w-full text-gray-800 border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
                                     />
                                     <label
                                         htmlFor="name"
@@ -150,7 +150,7 @@ const Contact = () => {
                                         placeholder=" "
                                         onChange={handleChange}
                                         required
-                                        className="peer w-full border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
+                                        className="peer w-full text-gray-800 border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
                                     />
                                     <label
                                         htmlFor="email"
@@ -179,7 +179,7 @@ const Contact = () => {
                                     placeholder=" "
                                     onChange={handleChange}
                                     required
-                                    className="peer w-full border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
+                                    className="peer w-full text-gray-800 border border-gray-300 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-transparent"
                                 />
                                 <label
                                     htmlFor="subject"
@@ -207,7 +207,7 @@ const Contact = () => {
                                     placeholder=" "
                                     onChange={handleChange}
                                     required
-                                    className="peer w-full border border-gray-300 rounded-xl px-4 pt-4 pb-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 resize-none bg-transparent"
+                                    className="peer w-full text-gray-800 border border-gray-300 rounded-xl px-4 pt-4 pb-2 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 resize-none bg-transparent"
                                 ></textarea>
                                 <label
                                     htmlFor="message"

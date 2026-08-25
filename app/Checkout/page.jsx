@@ -685,7 +685,7 @@ export default function CheckoutPage() {
               Order Number
             </p>
 
-            <p className="text-xl font-bold text-pink-600 mt-1">
+            <p className="text-xl font-bold text-green-600 mt-1">
               {orderNumber}
             </p>
           </div>
@@ -694,7 +694,7 @@ export default function CheckoutPage() {
             onClick={() =>
               router.push("/")
             }
-            className="w-full mt-5 bg-pink-600 hover:bg-pink-700 text-white py-3 rounded-xl font-semibold"
+            className="w-full mt-5 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold"
           >
             Continue Shopping
           </button>
@@ -766,10 +766,10 @@ export default function CheckoutPage() {
                       value={form.firstName}
                       onChange={handleChange}
                       placeholder="Full Name"
-                      className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
+                      className={`w-full border text-gray-800 rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
                         errors.firstName
                           ? "border-red-500"
-                          : "border-gray-200 focus:border-pink-500"
+                          : "border-gray-200 focus:border-green-500"
                       }`}
                     />
 
@@ -792,7 +792,7 @@ export default function CheckoutPage() {
                     value={form.lastName}
                     onChange={handleChange}
                     placeholder="Last Name"
-                    className="w-full border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:border-pink-500"
+                    className="w-full text-gray-800 border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:border-green-500"
                   />
 
                 </div>
@@ -809,10 +809,10 @@ export default function CheckoutPage() {
                       value={form.email}
                       onChange={handleChange}
                       placeholder="Email Address"
-                      className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
                         errors.email
                           ? "border-red-500"
-                          : "border-gray-200 focus:border-pink-500"
+                          : "border-gray-200 focus:border-green-500"
                       }`}
                     />
 
@@ -837,10 +837,10 @@ export default function CheckoutPage() {
                       value={form.phone}
                       onChange={handleChange}
                       placeholder="Phone Number"
-                      className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
                         errors.phone
                           ? "border-red-500"
-                          : "border-gray-200 focus:border-pink-500"
+                          : "border-gray-200 focus:border-green-500"
                       }`}
                     />
 
@@ -895,10 +895,10 @@ export default function CheckoutPage() {
                       onChange={handleChange}
                       placeholder="Street Address, House/Apartment No, Landmark"
                       rows={3}
-                      className={`w-full border rounded-xl pl-10 pr-3 py-3 text-sm outline-none resize-none ${
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none resize-none ${
                         errors.address
                           ? "border-red-500"
-                          : "border-gray-200 focus:border-pink-500"
+                          : "border-gray-200 focus:border-green-500"
                       }`}
                     />
 
@@ -940,7 +940,7 @@ export default function CheckoutPage() {
                             prev.country_id,
                         }));
                       }}
-                      className="w-full appearance-none border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white focus:border-pink-500"
+                      className="w-full text-gray-800 appearance-none border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white focus:border-green-500"
                     >
 
                       {countries.length > 0 ? (
@@ -972,10 +972,10 @@ export default function CheckoutPage() {
                       <select
                         value={form.state_id}
                         onChange={handleStateChange}
-                        className={`w-full appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white ${
+                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white ${
                           errors.province
                             ? "border-red-500"
-                            : "border-gray-200 focus:border-pink-500"
+                            : "border-gray-200 focus:border-green-500"
                         }`}
                       >
 
@@ -1027,10 +1027,10 @@ export default function CheckoutPage() {
                             },
                           })
                         }
-                        className={`w-full appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
+                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
                           !form.state_id
                             ? "bg-gray-100 cursor-not-allowed"
-                            : "bg-white focus:border-pink-500"
+                            : "bg-white focus:border-green-500"
                         } ${
                           errors.city
                             ? "border-red-500"
@@ -1077,7 +1077,7 @@ export default function CheckoutPage() {
                       value={form.postalCode}
                       onChange={handleChange}
                       placeholder="Postal / ZIP Code"
-                      className="w-full border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:border-pink-500"
+                      className="w-full text-gray-800 border border-gray-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:border-green-500"
                     />
 
                   </div>
@@ -1246,7 +1246,7 @@ export default function CheckoutPage() {
                         handlePaymentChange
                       }
                       placeholder="Cardholder Name"
-                      className="w-full border rounded-xl p-3 text-sm outline-none"
+                      className="w-full border rounded-xl p-3 text-sm outline-none text-gray-800"
                     />
 
                     <input
@@ -1258,7 +1258,7 @@ export default function CheckoutPage() {
                         handlePaymentChange
                       }
                       placeholder="Card Number"
-                      className="w-full border rounded-xl p-3 text-sm outline-none"
+                      className="w-full border rounded-xl p-3 text-sm outline-none text-gray-800"
                     />
 
                     <div className="grid grid-cols-2 gap-3">
@@ -1272,7 +1272,7 @@ export default function CheckoutPage() {
                           handlePaymentChange
                         }
                         placeholder="MM/YY"
-                        className="border rounded-xl p-3 text-sm"
+                        className="border rounded-xl p-3 text-sm text-gray-800"
                       />
 
                       <input
@@ -1285,7 +1285,7 @@ export default function CheckoutPage() {
                           handlePaymentChange
                         }
                         placeholder="CVV"
-                        className="border rounded-xl p-3 text-sm"
+                        className="border rounded-xl p-3 text-sm text-gray-800"
                       />
 
                     </div>
@@ -1299,7 +1299,7 @@ export default function CheckoutPage() {
                   paymentMethod ===
                     "easypaisa") && (
 
-                  <div className="mt-4">
+                  <div className="mt-4 text-gray-800">
 
                     <input
                       name="mobileNumber"
@@ -1435,7 +1435,7 @@ export default function CheckoutPage() {
 
                         </div>
 
-                        <strong className="text-xs whitespace-nowrap">
+                        <strong className="text-xs whitespace-nowrap text-gray-800">
                           Rs{" "}
                           {(
                             price * qty

@@ -13,13 +13,67 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 export default function CartPage() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [userID, setUserID] = useState(null);
+
+
+
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('token');
+
+        return {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+    };
+
+    const getUserId = () => {
+        return localStorage.getItem('userId');
+    };
 
     // LocalStorage se userID aur cart load karna (Client side only)
     useEffect(() => {
-        const storedUserID = localStorage.getItem("userID");
-        alert(storedUserID)
-        setUserID(storedUserID);
+
+
+        const fetchCartData = async () => {
+            try {
+                const userId = getUserId();
+                const token = localStorage.getItem('token');
+
+                if (!userId || !token) {
+                    toast.error('Please login first to view your profile.');
+                    setLoading(false);
+                    return;
+                }
+
+                const response = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
+                    method: 'GET',
+                    headers: getAuthHeaders(),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch profile data');
+                }
+                const data = await response.json();
+
+                const items = Array.isArray(data) ? data : data.data || [];
+                if (items && items.length >= 0) {
+                    setCartItems(items);
+                    localStorage.setItem("cart", JSON.stringify(items));
+                }
+
+
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to load profile data from server');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+
+
+        // const storedUserID = localStorage.getItem("userId");
+        // alert(storedUserID)
+        // setUserID(storedUserID);
 
         // const localCart = localStorage.getItem("cart");
         // if (localCart) {
@@ -30,65 +84,91 @@ export default function CartPage() {
         //     }
         // }
 
-        if (!storedUserID) {
-            setLoading(false);
-            return;
-        }
+        // if (!storedUserID) {
+        //     setLoading(false);
+        //     return;
+        // }
+
+
+
+        // if (!response_api.ok) {
+        //     throw new Error('Failed to fetch profile data');
+        // }
+
 
         // API se Cart data fetch karna
-        fetch(`${API_BASE_URL}/api/cart?user_id=${storedUserID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                const items = Array.isArray(data) ? data : data.data || [];
-                if (items && items.length >= 0) {
-                    setCartItems(items);
-                    localStorage.setItem("cart", JSON.stringify(items));
-                }
-            })
-            .catch((err) => {
-                console.error("Fetch Error:", err);
-            })
-            .finally(() => {
-                setLoading(false);
-            });
+        // fetch(`${API_BASE_URL}/api/cart?user_id=${storedUserID}`), {
+        //     method: 'GET',
+        //     headers: getAuthHeaders(),
+        // }.then((res) => res.json())
+        // .then((data) => {
+        //     const items = Array.isArray(data) ? data : data.data || [];
+        //     if (items && items.length >= 0) {
+        //         setCartItems(items);
+        //         localStorage.setItem("cart", JSON.stringify(items));
+        //     }
+        // })
+        // .catch((err) => {
+        //     console.error("Fetch Error:", err);
+        // })
+        // .finally(() => {
+        //     setLoading(false);
+        // });
+        fetchCartData();
     }, []);
 
     // Helper function to update backend DB quantity
-    const updateQuantityInDB = (cartId, userId, newQty) => {
-        if (!userId) return;
-        fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({
-                user_id: userId,
-                quantity: newQty
-            })
+   // Helper function to update backend DB quantity
+const updateQuantityInDB = (cartId, newQty) => {
+    const fixedUserId = 1; // User ID hardcoded yahan set hai
+
+    fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(), // token bhi sath jayega
+        body: JSON.stringify({
+            user_id: fixedUserId,
+            quantity: newQty
         })
-            .then((res) => res.json())
-            .then((data) => console.log("Database updated:", data))
-            .catch((err) => console.error("Database update error:", err));
-    };
-
-    // Delete Item Function
-    const removeItem = (id) => {
-        const updatedItems = cartItems.filter(
-            (item) => String(item.id) !== String(id)
-        );
-        setCartItems(updatedItems);
-        localStorage.setItem("cart", JSON.stringify(updatedItems));
-        window.dispatchEvent(new Event("cartUpdated"));
-
-        fetch(`${API_BASE_URL}/api/cart-remove-item/${id}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
+    })
+        .then((res) => {
+            if (!res.ok) {
+                throw new Error(`Update failed with status ${res.status}`);
             }
-        }).catch((err) => console.error("API error:", err));
-    };
+            return res.json();
+        })
+        .then((data) => console.log("Database updated:", data))
+        .catch((err) => console.error("Database update error:", err));
+};
+
+   // Delete Item Function
+const removeItem = (cartId) => {
+    const fixedUserId = 2;
+
+    // Pehle UI se turant hata dein
+    const updatedItems = cartItems.filter(
+        (item) => String(item.id) !== String(cartId)
+    );
+    setCartItems(updatedItems);
+    localStorage.setItem("cart", JSON.stringify(updatedItems));
+    window.dispatchEvent(new Event("cartUpdated"));
+
+    // Phir backend se bhi delete karein - POST method, id URL me
+    fetch(`${API_BASE_URL}/api/cart-remove-item/${cartId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+            user_id: fixedUserId
+        })
+    })
+        .then((res) => {
+            if (!res.ok) {
+                throw new Error(`Remove failed with status ${res.status}`);
+            }
+            return res.json();
+        })
+        .then((data) => console.log("Item removed:", data))
+        .catch((err) => console.error("Remove API error:", err));
+};
 
     // Increase Quantity
     const increaseQty = (id) => {
@@ -104,7 +184,7 @@ export default function CartPage() {
         setCartItems(updated);
         localStorage.setItem("cart", JSON.stringify(updated));
         window.dispatchEvent(new Event("cartUpdated"));
-        updateQuantityInDB(id, userID, newQty);
+        updateQuantityInDB(id, newQty);
     };
 
     // Decrease Quantity
@@ -125,7 +205,7 @@ export default function CartPage() {
             setCartItems(updated);
             localStorage.setItem("cart", JSON.stringify(updated));
             window.dispatchEvent(new Event("cartUpdated"));
-            updateQuantityInDB(id, userID, newQty);
+            updateQuantityInDB(id, newQty);
         }
     };
 

@@ -350,7 +350,7 @@ const Navbar = () => {
                       <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
                         <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
                       </Link>
-                      <Link href="/order" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                      <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
                         <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
                       </Link>
                     </div>
@@ -400,7 +400,8 @@ const Navbar = () => {
 
               {/* Categories Dropdown Panels */}
               <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
-                <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl">
+                {/* LEVEL 1: Main Categories */}
+                <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
                   {loading ? (
                     <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
                   ) : (
@@ -421,8 +422,9 @@ const Navbar = () => {
                   )}
                 </div>
 
+                {/* LEVEL 2: Sub Categories */}
                 {activeMainCat?.children?.length > 0 && (
-                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto">
+                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
                     <ul className="space-y-0.5">
                       {activeMainCat.children.map((subCat) => (
                         <li key={subCat.id}>
@@ -440,13 +442,35 @@ const Navbar = () => {
                     </ul>
                   </div>
                 )}
+
+                {/* LEVEL 3: Child Categories */}
+                {activeSubCat?.children?.length > 0 && (
+                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
+                    <ul className="space-y-0.5">
+                      {activeSubCat.children.map((childCat) => {
+                        const childSlugPath = `${activeMainCat.slug}/${activeSubCat.slug}/${childCat.slug}`;
+                        return (
+                          <li key={childCat.id}>
+                            <Link
+                              href={`/ExploreProducts/${childSlugPath}`}
+                              onClick={resetCategoryMenu}
+                              className="block py-2 px-3 text-sm font-semibold transition rounded-md text-gray-700 hover:bg-gray-50 hover:text-black"
+                            >
+                              {childCat.name}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
               <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
               <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
-              <Link href="/Categories" className="hover:text-blue-600 transition py-2">Categories</Link>
+              <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2">Categories</Link>
               <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
             </div>
           </div>
