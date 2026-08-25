@@ -3,10 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowRight, FaTimes } from "react-icons/fa";
 import Link from "next/link";
-// import defaultimg from "@/assets/default_img.png"; // Apne path ke mutabiq adjust kar lein
 
-// API_BASE_URL ko apni API ke mutabiq set karein
-// const API_BASE_URL = "https://your-api-domain.com";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 
@@ -29,8 +26,9 @@ export default function CartPage() {
         return localStorage.getItem('userId');
     };
 
-    // LocalStorage se userID aur cart load karna (Client side only)
+   
     useEffect(() => {
+
 
 
         const fetchCartData = async () => {
@@ -117,22 +115,39 @@ export default function CartPage() {
         fetchCartData();
     }, []);
 
-    // Helper function to update backend DB quantity
-   // Helper function to update backend DB quantity
-const updateQuantityInDB = (cartId, newQty) => {
-    const fixedUserId = 1; // User ID hardcoded yahan set hai
-
-    fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
-        method: "PUT",
-        headers: getAuthHeaders(), // token bhi sath jayega
-        body: JSON.stringify({
-            user_id: fixedUserId,
-            quantity: newQty
+    
+    const updateQuantityInDB = (cartId, userId, newQty) => {
+        if (!userId) return;
+        fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                quantity: newQty
+            })
         })
-    })
-        .then((res) => {
-            if (!res.ok) {
-                throw new Error(`Update failed with status ${res.status}`);
+            .then((res) => res.json())
+            .then((data) => console.log("Database updated:", data))
+            .catch((err) => console.error("Database update error:", err));
+    };
+
+   
+    const removeItem = (id) => {
+        const updatedItems = cartItems.filter(
+            (item) => String(item.id) !== String(id)
+        );
+        setCartItems(updatedItems);
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+        window.dispatchEvent(new Event("cartUpdated"));
+
+        fetch(`${API_BASE_URL}/api/cart-remove-item/${id}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
             }
             return res.json();
         })
@@ -170,7 +185,7 @@ const removeItem = (cartId) => {
         .catch((err) => console.error("Remove API error:", err));
 };
 
-    // Increase Quantity
+    
     const increaseQty = (id) => {
         let newQty = 1;
         const updated = cartItems.map((item) => {
@@ -187,7 +202,7 @@ const removeItem = (cartId) => {
         updateQuantityInDB(id, newQty);
     };
 
-    // Decrease Quantity
+    
     const decreaseQty = (id) => {
         let newQty = 1;
         let shouldUpdate = false;
@@ -209,7 +224,7 @@ const removeItem = (cartId) => {
         }
     };
 
-    // Image path extractor
+    
     const getProductImage = (item) => {
         const variant = item?.variant;
 
@@ -224,7 +239,8 @@ const removeItem = (cartId) => {
             variant?.image_path ||
             variant?.image;
 
-        if (!path) return defaultimg.src;
+        
+        if (!path) return "/placeholder.png";
 
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return path;
@@ -278,7 +294,7 @@ const removeItem = (cartId) => {
                     </div>
                 ) : (
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
-                        {/* Cart Items List */}
+                        
                         <div className="lg:col-span-2 space-y-4">
                             {cartItems.map((item) => {
                                 const variant = item.variant;
@@ -289,7 +305,7 @@ const removeItem = (cartId) => {
                                         key={item.id}
                                         className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all"
                                     >
-                                        {/* Product Details Section */}
+                                     
                                         <div className="flex items-center gap-4 w-full sm:w-auto">
                                             <img
                                                 src={getProductImage(item)}
@@ -313,7 +329,7 @@ const removeItem = (cartId) => {
                                             </div>
                                         </div>
 
-                                        {/* Quantity & Delete Controls */}
+                                        
                                         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
                                             <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
                                                 <button
@@ -350,7 +366,7 @@ const removeItem = (cartId) => {
                             })}
                         </div>
 
-                        {/* Cart Summary Card */}
+                        
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
                             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#00A651]"></span>

@@ -8,25 +8,26 @@ import Brands from "./Brands/page"
 import Official from "./Official/page"
 import Handpicked from "./Handpicked/page"
 export default function Home() {
+  
   return (
     <>
     <div className="bg-gray-50">
      <Hero />
-    <div className=" lg:px-3 mx-auto">
+    
  
   <Bestselling />
   <Banner />
   <Featured />
-  </div>
+  
   <Special />
- <div className="lg:px-3 md:px-1 mx-auto">
+
   <Brands/>
-</div>
+
 
   <Official />
-   <div className="px-3  mx-auto">
+ 
  <Handpicked />
- </div>
+
  </div>
   </>
 

@@ -109,9 +109,9 @@ const Navbar = () => {
     return () => window.removeEventListener("wishlistUpdated", updateCount);
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     const updateCart = () => {
-      const cart = JSON.parse(localStorage.getItem("cartItems")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
       const total = cart.reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(total);
     };
@@ -258,7 +258,7 @@ const Navbar = () => {
   return (
     <>
       <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
-        <div className="container px-4 mx-auto sm:px-6 lg:px-10">
+        <div className="container  mx-auto ">
           {/* Header */}
           <div className="flex justify-between items-center h-20">
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -384,7 +384,7 @@ const Navbar = () => {
 
         {/* --- BOTTOM NAVBAR --- */}
         <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-          <div className="container px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
+          <div className="container  mx-auto flex items-center h-12 text-sm font-medium relative">
             <div
               className="relative"
               onMouseEnter={() => setIsCategoryOpen(true)}
