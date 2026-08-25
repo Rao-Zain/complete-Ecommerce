@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FaShoppingCart, FaStar, FaHeart } from "react-icons/fa";
-import { API_BASE_URL } from "@/lib/config";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
-const BASE_URL = API_BASE_URL;
+
+// 👇 Apni API base yahan set karein (jaisa Navbar mein tha)
 
 // Shimmer Loader Component for Smooth Loading Experience
 const ShimmerLoader = () => {
@@ -67,7 +68,7 @@ const FashionCategory = () => {
   // Fetch categories and products from API based on current id
   useEffect(() => {
     setLoading(true);
-    fetch(`${BASE_URL}/api/categories/products/${id || 1}`)
+    fetch(`${API_BASE_URL}/api/categories/products/${id || 1}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -141,7 +142,7 @@ const FashionCategory = () => {
                         >
                           <div className="w-40 h-40 bg-gray-100 rounded-lg overflow-hidden mb-2">
                             <img
-                              src={`${BASE_URL}/storage/cat_image/${subCat.image}`}
+                              src={`${IMAGE_BASE_URL}/cat_image/${subCat.image}`}
                               alt={subCat.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                             />
@@ -175,9 +176,9 @@ const FashionCategory = () => {
                   {products.map((product) => {
                     const variant = product.main_variant || product.variants?.[0];
                     const imagePath = product.main_variant_image?.image_path
-                      ? `${BASE_URL}/storage/${product.main_variant_image.image_path}`
+                      ? `${IMAGE_BASE_URL}/${product.main_variant_image.image_path}`
                       : product.image
-                        ? `${BASE_URL}/${product.image}`
+                        ? `${IMAGE_BASE_URL}/${product.image}`
                         : "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500";
 
                     return (

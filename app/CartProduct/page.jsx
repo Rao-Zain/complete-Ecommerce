@@ -18,16 +18,17 @@ export default function CartPage() {
     // LocalStorage se userID aur cart load karna (Client side only)
     useEffect(() => {
         const storedUserID = localStorage.getItem("userID");
+        alert(storedUserID)
         setUserID(storedUserID);
 
-        const localCart = localStorage.getItem("cart");
-        if (localCart) {
-            try {
-                setCartItems(JSON.parse(localCart));
-            } catch (e) {
-                console.error("Error parsing local cart", e);
-            }
-        }
+        // const localCart = localStorage.getItem("cart");
+        // if (localCart) {
+        //     try {
+        //         setCartItems(JSON.parse(localCart));
+        //     } catch (e) {
+        //         console.error("Error parsing local cart", e);
+        //     }
+        // }
 
         if (!storedUserID) {
             setLoading(false);

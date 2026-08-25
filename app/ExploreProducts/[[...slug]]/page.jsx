@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { FaShoppingCart, FaStar, FaArrowLeft, FaCheck, FaHeart, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { API_BASE_URL } from '@/lib/config';
+// const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://192.168.1.2:8008";
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
-const BASE_URL = API_BASE_URL;
 
 // Shimmer Loader for the Shop Page
 const ShopShimmer = () => {
@@ -111,7 +111,7 @@ const ExploreProducts = () => {
 
         const categoryPath = fullPath ? `/${fullPath}` : '';
 
-        fetch(`${BASE_URL}/api/category-sidebar${categoryPath}`)
+        fetch(`${API_BASE_URL}/api/category-sidebar${categoryPath}`)
             .then((res) => res.json())
             .then((data) => {
                 if (data.success && data.categories) {
@@ -139,7 +139,7 @@ const ExploreProducts = () => {
 
         const categoryPath = fullPath ? `/${fullPath}` : '';
         const queryString = queryParams.toString();
-        const url = `${BASE_URL}/api/categories-products${categoryPath}${queryString ? `?${queryString}` : ''}`;
+        const url = `${API_BASE_URL}/api/categories-products${categoryPath}${queryString ? `?${queryString}` : ''}`;
 
         fetch(url)
             .then((res) => res.json())
@@ -455,9 +455,9 @@ const ExploreProducts = () => {
                                 {products.map((product) => {
                                     const variant = product.main_variant || product.variants?.[0];
                                     const imagePath = product.main_variant_image?.image_path
-                                        ? `${BASE_URL}/storage/${product.main_variant_image.image_path}`
+                                        ? `${IMAGE_BASE_URL}/${product.main_variant_image.image_path}`
                                         : product.image
-                                            ? `${BASE_URL}/${product.image}`
+                                            ? `${IMAGE_BASE_URL}/${product.image}`
                                             : "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500";
 
                                     return (
