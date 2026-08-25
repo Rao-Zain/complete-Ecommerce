@@ -1,105 +1,128 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import Link from "next/link";
-console.log(API_BASE_URL)
-// Reads a cookie by name — only needed as a fallback if credentials:"include"
-// alone doesn't get the guest_unique_token cookie to your API (e.g. cross-domain).
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(";").shift();
+
+// Generates and persists a random guest token the first time a visitor
+// with no user token loads the page, so their "for you" activity can be
+// tracked across requests even before they log in.
+function getOrCreateGuestToken() {
+  let guestToken = localStorage.getItem("guest_unique_token");
+  if (!guestToken) {
+    guestToken =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `guest-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem("guest_unique_token", guestToken);
+  }
+  return guestToken;
 }
 
 function Handpicked() {
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
 
-  const [page, setPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  // Prevents the same page from being fetched twice (e.g. fast scroll + StrictMode double-effect)
+  const fetchedPages = useRef(new Set());
+  const loaderRef = useRef(null);
 
-  useEffect(() => {
-    const fetchfeatured = async () => {
-      setLoading(true);
-      setError(false);
+  const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
+    if (fetchedPages.current.has(pageToFetch)) return;
+    fetchedPages.current.add(pageToFetch);
 
-      try {
-        // const guestToken = getCookie("guest_unique_token"); // fallback, see below
+    if (isInitial) setInitialLoading(true);
+    else setLoadingMore(true);
 
-        const res = await fetch(`${API_BASE_URL}/api/products/for-you?page=${page}`, {
+    try {
+      const userToken = localStorage.getItem("token") || "";
+      const guestToken = userToken ? "" : getOrCreateGuestToken();
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/products/for-you?page=${pageToFetch}&per_page=12`,
+        {
           method: "GET",
-          credentials: "include", // sends guest_unique_token cookie automatically
           headers: {
             Accept: "application/json",
-            // Uncomment this if the cookie alone isn't reaching the backend:
-            // ...(guestToken && { "X-Guest-Token": guestToken }),
+            ...(userToken && { Authorization: `Bearer ${userToken}` }),
+            ...(!userToken && guestToken && { "X-Guest-Token": guestToken }),
           },
-        });
+        }
+      );
 
-        if (!res.ok) throw new Error("Failed to fetch For You Products");
-        const response = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch For You Products");
+      const response = await res.json();
 
-        // Handles a few common Laravel paginate() response shapes defensively
-        const items = response.data?.data || response.data || [];
-        const meta = response.data?.meta || response.meta || response;
+      const items = response.data || [];
+      const meta = response.meta || {};
 
-        setProducts(items);
-        setLastPage(meta?.last_page || 1);
-        setTotal(meta?.total ?? items.length);
-      } catch (err) {
-        console.error("Error fetching For You Products:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
+      setProducts((prev) => {
+        // Guard against duplicates if a page ever gets fetched twice
+        const existingIds = new Set(prev.map((p) => p.id));
+        const newOnes = items.filter((p) => !existingIds.has(p.id));
+        return [...prev, ...newOnes];
+      });
+
+      const more =
+        typeof meta.has_more === "boolean"
+          ? meta.has_more
+          : meta.current_page && meta.last_page
+          ? meta.current_page < meta.last_page
+          : items.length === 12;
+
+      setHasMore(more);
+    } catch (err) {
+      console.error("Error fetching For You Products:", err);
+      setError(true);
+      setHasMore(false);
+    } finally {
+      setInitialLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  // Initial load — first 12 products
+  useEffect(() => {
+    fetchProducts(1, true);
+  }, [fetchProducts]);
+
+  // Infinite scroll: observe a sentinel element near the bottom of the grid.
+  // When it becomes visible, fetch the next page — but only if not already
+  // loading and there's more data.
+  useEffect(() => {
+    if (!hasMore || initialLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && !loadingMore && hasMore) {
+          setPage((prev) => {
+            const next = prev + 1;
+            fetchProducts(next, false);
+            return next;
+          });
+        }
+      },
+      { rootMargin: "200px" } // start loading a bit before it's fully in view
+    );
+
+    const currentLoader = loaderRef.current;
+    if (currentLoader) observer.observe(currentLoader);
+
+    return () => {
+      if (currentLoader) observer.unobserve(currentLoader);
     };
-
-    fetchfeatured();
-    // Scroll user back to the top of this section when the page changes
-    // so pagination clicks feel responsive on long pages.
-    if (typeof window !== "undefined" && page !== 1) {
-      const section = document.getElementById("handpicked-section");
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [page]);
-
-  const handlePrev = () => {
-    setPage((p) => Math.max(1, p - 1));
-  };
-
-  const handleNext = () => {
-    setPage((p) => Math.min(lastPage, p + 1));
-  };
-
-  const handlePageClick = (p) => {
-    setPage(p);
-  };
-
-  // Builds a compact page-number list: 1 ... current-1 current current+1 ... last
-  const getPageNumbers = () => {
-    const pages = [];
-    const delta = 1;
-
-    for (let i = 1; i <= lastPage; i++) {
-      if (
-        i === 1 ||
-        i === lastPage ||
-        (i >= page - delta && i <= page + delta)
-      ) {
-        pages.push(i);
-      } else if (pages[pages.length - 1] !== "...") {
-        pages.push("...");
-      }
-    }
-    return pages;
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loadingMore, initialLoading]);
 
   return (
-    <main id="handpicked-section" className="bg-gray-50 min-h-screen py-4">
+    <main className="bg-gray-50 min-h-screen py-4">
       <div className="mx-auto container">
         {/* Header Section */}
         <div className="mb-8">
@@ -110,19 +133,20 @@ function Handpicked() {
             </h1>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Our top 10 most popular and ordered items
+            Our top picks based on what's popular right now
           </p>
         </div>
 
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-            {Array.from({ length: 10 }).map((_, i) => (
+        {/* Initial skeleton — first load only */}
+        {initialLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {Array.from({ length: 12 }).map((_, i) => (
               <div
                 key={i}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
               >
-                <div className="h-48 w-full animate-pulse bg-gray-200" />
-                <div className="p-3 space-y-2">
+                <div className="h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse bg-gray-200" />
+                <div className="p-2 sm:p-3 space-y-2">
                   <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
                   <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
                   <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
@@ -136,16 +160,20 @@ function Handpicked() {
           </div>
         )}
 
-        {!loading && (error || products.length === 0) && (
+        {!initialLoading && error && products.length === 0 && (
           <div className="h-[220px] w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-xl">
-            {error
-              ? "Couldn't load For You products."
-              : "No For you products available."}
+            Couldn't load For You products.
+          </div>
+        )}
+
+        {!initialLoading && !error && products.length === 0 && (
+          <div className="h-[220px] w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-xl">
+            No For you products available.
           </div>
         )}
 
         {/* Products Grid */}
-        {!loading && !error && products.length > 0 && (
+        {!initialLoading && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {products.map((product) => {
               const firstVariant = product.variants?.[0];
@@ -169,10 +197,7 @@ function Handpicked() {
                   key={product.id}
                   className="bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
                 >
-                  <div
-                    key={product.id}
-                    className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between"
-                  >
+                  <div className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
                     {/* Image & Badges Container */}
                     <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full">
                       {product.product_type === "featured" && (
@@ -267,50 +292,40 @@ function Handpicked() {
           </div>
         )}
 
-        {/* Pagination Controls */}
-        {!loading && !error && lastPage > 1 && (
-          <div className="flex flex-col items-center gap-2 mt-8">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <button
-                onClick={handlePrev}
-                disabled={page === 1}
-                className="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Prev
-              </button>
+        {/* Sentinel + loading-more / end-of-list states */}
+        {!initialLoading && products.length > 0 && (
+          <div ref={loaderRef} className="w-full py-8 flex items-center justify-center">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <svg
+                  className="animate-spin h-5 w-5 text-emerald-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+                Loading more products...
+              </div>
+            )}
 
-              {getPageNumbers().map((p, idx) =>
-                p === "..." ? (
-                  <span key={`dots-${idx}`} className="px-2 text-xs sm:text-sm text-gray-400">
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => handlePageClick(p)}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-xs sm:text-sm rounded-md border transition-colors ${
-                      page === p
-                        ? "bg-black text-white border-black"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-
-              <button
-                onClick={handleNext}
-                disabled={page === lastPage}
-                className="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
-            </div>
-
-            <p className="text-[11px] sm:text-xs text-gray-400">
-              Page {page} of {lastPage} · {total} items total
-            </p>
+            {!loadingMore && !hasMore && (
+              <p className="text-xs sm:text-sm text-gray-400">
+                You've seen it all — no more products.
+              </p>
+            )}
           </div>
         )}
       </div>

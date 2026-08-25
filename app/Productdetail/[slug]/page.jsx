@@ -83,53 +83,70 @@ export default function Productdetail() {
   }, [slug]);
 
   // Add to cart
-  const handleAddToCart = async () => {
-    if (!activeVariant) {
-      toast.error("Please select a color and size.");
-      return;
+const handleAddToCart = async () => {
+  const token = localStorage.getItem("token");
+
+  console.log("TOKEN:", token);
+
+  if (!token) {
+    toast.error("Please log in to add items to your cart.");
+    return;
+  }
+
+  if (!activeVariant) {
+    toast.error("Please select a color and size.");
+    return;
+  }
+
+  if (activeVariant.stock < quantity) {
+    toast.error("Not enough stock available.");
+    return;
+  }
+
+  setAddingToCart(true);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/add-to-cart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        product_id: product.id,
+        variant_id: activeVariant.id,
+        qty: quantity,
+      }),
+    });
+
+    console.log("STATUS:", res.status);
+
+    const data = await res.json();
+
+    console.log("ADD TO CART RESPONSE:", data);
+
+    if (!res.ok || data.status === false) {
+      throw new Error(
+        data.message || "Failed to add product to cart"
+      );
     }
 
-    if (activeVariant.stock < quantity) {
-      toast.error("Not enough stock available.");
-      return;
-    }
+    toast.success(data.message || "Added to cart!");
 
-    setAddingToCart(true);
+    window.dispatchEvent(new Event("cartUpdated"));
+  } catch (err) {
+    console.error("ADD TO CART ERROR:", err);
 
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(`${API_BASE_URL}/api/add-to-cart`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          ...(token && {
-            Authorization: `Bearer ${token}`,
-          }),
-        },
-        body: JSON.stringify({
-          product_id: product.id,
-          variant_id: activeVariant.id,
-          qty: quantity,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.status === false) {
-        throw new Error(data.message || "Failed to add to cart");
-      }
-
-      toast.success(data.message || "Added to cart!");
-
-      window.dispatchEvent(new Event("cartUpdated"));
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setAddingToCart(false);
-    }
-  };
+    toast.error(
+      err instanceof Error
+        ? err.message
+        : "Something went wrong"
+    );
+  } finally {
+    setAddingToCart(false);
+  }
+};
 
   // --------------------------------------------------
   // LOADING SKELETON
@@ -1023,6 +1040,7 @@ export default function Productdetail() {
                 sm:w-[140px]
                 h-10
                 flex
+                cursor-pointer
                 items-center
                 justify-center
                 bg-black
@@ -1054,6 +1072,7 @@ export default function Productdetail() {
                 items-center
                 justify-center
                 gap-1
+                cursor-pointer
                 bg-orange-600
                 text-white
                 rounded-md
