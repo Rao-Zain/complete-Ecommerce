@@ -402,7 +402,7 @@ const ExploreProducts = () => {
 
                     {/* RIGHT SIDE PRODUCTS CONTAINER */}
                     <div className="container mx-auto">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                        <div className="flex justify-between items-center bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mb-6">
                             <h2 className="font-bold text-gray-800">Products ({products.length})</h2>
 
                             {/* Custom styled sort dropdown (replaces native <select>) */}

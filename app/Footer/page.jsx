@@ -8,7 +8,7 @@ export default function Footer() {
         {/* Column 1: Logo & Description (Takes 2 columns on large screens) */}
         <div className="lg:col-span-2 space-y-4">
           <div>
-              <h2 className="font-extrabold text-2xl tracking-tight text-white">Shop<span className="text-blue-500">Nest</span></h2>
+              <h2 className="font-extrabold text-2xl tracking-tight text-white">Shop<span className="text-blue-500 italic">Nest</span></h2>
             </div>
           <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
             Discover premium products at the best prices. Shop with confidence and enjoy fast delivery, secure payments, and excellent customer support.
@@ -26,7 +26,7 @@ export default function Footer() {
               <Link href="/Products" className="hover:text-white transition-colors">Products</Link>
             </li>
             <li>
-              <Link href="/categories" className="hover:text-white transition-colors">Categories</Link>
+              <Link href="/ExploreProducts" className="hover:text-white transition-colors">Categories</Link>
             </li>
             {/* <li>
               <Link href="/about" className="hover:text-white transition-colors">About Us</Link>

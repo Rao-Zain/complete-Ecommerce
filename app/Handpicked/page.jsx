@@ -19,6 +19,25 @@ function getOrCreateGuestToken() {
   return guestToken;
 }
 
+const PER_PAGE = 12;
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse bg-gray-200" />
+      <div className="p-2 sm:p-3 space-y-2">
+        <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+        <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
+        <div className="mt-3 flex items-center justify-between pt-2">
+          <div className="h-5 w-16 animate-pulse rounded bg-gray-200" />
+          <div className="h-4 w-14 animate-pulse rounded bg-gray-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Handpicked() {
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
@@ -31,6 +50,18 @@ function Handpicked() {
   // Missing Refs Restored
   const fetchedPages = useRef(new Set());
   const loaderRef = useRef(null);
+  const observerRef = useRef(null);
+
+  // Mirrors of state that the IntersectionObserver callback reads. The
+  // callback is created ONCE (see the observer effect below) so it can't
+  // rely on state values from the render it was created in — it needs a
+  // ref to always see the latest value.
+  const hasMoreRef = useRef(true);
+  const fetchingRef = useRef(false);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
 
   // Wishlist state
   const [wishlistIds, setWishlistIds] = useState([]);
@@ -44,8 +75,9 @@ function Handpicked() {
 
   // Fetching Products Callback
   const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
-    if (fetchedPages.current.has(pageToFetch)) return;
+    if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
     fetchedPages.current.add(pageToFetch);
+    fetchingRef.current = true;
 
     if (isInitial) setInitialLoading(true);
     else setLoadingMore(true);
@@ -55,7 +87,7 @@ function Handpicked() {
       const guestToken = userToken ? "" : getOrCreateGuestToken();
 
       const res = await fetch(
-        `${API_BASE_URL}/api/products/for-you?page=${pageToFetch}&per_page=12`,
+        `${API_BASE_URL}/api/products/for-you?page=${pageToFetch}&per_page=${PER_PAGE}`,
         {
           method: "GET",
           headers: {
@@ -83,108 +115,65 @@ function Handpicked() {
           ? meta.has_more
           : meta.current_page && meta.last_page
           ? meta.current_page < meta.last_page
-          : items.length === 12;
+          : items.length === PER_PAGE;
 
       setHasMore(more);
+      hasMoreRef.current = more;
     } catch (err) {
       console.error("Error fetching For You Products:", err);
       setError(true);
       setHasMore(false);
+      hasMoreRef.current = false;
     } finally {
       setInitialLoading(false);
       setLoadingMore(false);
+      fetchingRef.current = false;
     }
   }, []);
 
-  // Fetch initial page on mount + on page changes
+  // Initial load — first page
   useEffect(() => {
     fetchProducts(page, page === 1);
   }, [page, fetchProducts]);
 
-  // Infinite Scroll Observer
+  // Infinite scroll: ONE IntersectionObserver for the component's whole
+  // lifetime (created only after the initial load finishes, then never
+  // recreated). This is the fix for "hits the API multiple times":
+  // previously the observer was recreated whenever `hasMore`/`loadingMore`
+  // changed, and a brand-new IntersectionObserver fires its callback
+  // immediately if the target is already on-screen — so the instant one
+  // fetch finished (loadingMore -> false) a fresh observer would fire
+  // again right away, even though the user hadn't scrolled any further.
+  // Reading `hasMoreRef`/`fetchingRef` inside the callback instead of
+  // capturing `hasMore`/`loadingMore` lets a single long-lived observer
+  // always act on the latest state without needing to be rebuilt.
   useEffect(() => {
-    if (initialLoading || !hasMore || loadingMore) return;
+    if (initialLoading || observerRef.current) return;
+    const currentLoader = loaderRef.current;
+    if (!currentLoader) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage((prev) => prev + 1);
+        const target = entries[0];
+        if (target.isIntersecting && !fetchingRef.current && hasMoreRef.current) {
+          setPage((prev) => {
+            const next = prev + 1;
+            fetchProducts(next, false);
+            return next;
+          });
         }
       },
       { threshold: 0.5 }
     );
 
-    if (loaderRef.current) observer.observe(loaderRef.current);
+    observer.observe(currentLoader);
+    observerRef.current = observer;
 
-    return () => observer.disconnect();
-  }, [initialLoading, hasMore, loadingMore]);
-
-  // Sync wishlist from localStorage
-  useEffect(() => {
-    const loadWishlist = () => {
-      const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
-      setWishlistIds(stored);
-    };
-    loadWishlist();
-    window.addEventListener("wishlistUpdated", loadWishlist);
-    window.addEventListener("storage", loadWishlist);
     return () => {
-      window.removeEventListener("wishlistUpdated", loadWishlist);
-      window.removeEventListener("storage", loadWishlist);
+      observer.disconnect();
+      observerRef.current = null;
     };
-  }, []);
-
-  const toggleWishlist = async (e, productId) => {
-    // Prevent navigating to the product page when clicking wishlist
-    e.preventDefault();
-    e.stopPropagation();
-
-    const userId = localStorage.getItem("userId");
-    const token = getAuthToken();
-
-    if (!userId || !token) {
-      alert("Wishlist mein add karne ke liye pehle login karein");
-      return;
-    }
-
-    const numericUserId = Number(userId);
-    const numericProductId = Number(productId);
-
-    const isWishlisted = wishlistIds.includes(numericProductId);
-    const updated = isWishlisted
-      ? wishlistIds.filter((id) => id !== numericProductId)
-      : [...wishlistIds, numericProductId];
-
-    setWishlistIds(updated);
-    localStorage.setItem("wishlist", JSON.stringify(updated));
-    window.dispatchEvent(new Event("wishlistUpdated"));
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: numericUserId,
-          product_id: numericProductId,
-        }),
-      });
-
-      const resData = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(resData.message || "Wishlist update failed");
-      }
-    } catch (err) {
-      console.error("Wishlist toggle error:", err);
-      setWishlistIds(wishlistIds);
-      localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
-      window.dispatchEvent(new Event("wishlistUpdated"));
-    }
-  };
+  }, [initialLoading, fetchProducts]);
 
   return (
     <main className="bg-gray-50 min-h-screen py-4">
@@ -205,22 +194,8 @@ function Handpicked() {
         {/* Initial Skeleton */}
         {initialLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
-              >
-                <div className="h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse bg-gray-200" />
-                <div className="p-2 sm:p-3 space-y-2">
-                  <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
-                  <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
-                  <div className="mt-3 flex items-center justify-between pt-2">
-                    <div className="h-5 w-16 animate-pulse rounded bg-gray-200" />
-                    <div className="h-4 w-14 animate-pulse rounded bg-gray-200" />
-                  </div>
-                </div>
-              </div>
+            {Array.from({ length: PER_PAGE }).map((_, i) => (
+              <SkeletonCard key={i} />
             ))}
           </div>
         )}
@@ -364,44 +339,26 @@ function Handpicked() {
                 </Link>
               );
             })}
+
+            {/* Shimmer placeholders for the page currently being fetched —
+                rendered inside the SAME grid so they line up like real
+                cards instead of a spinner below the grid. */}
+            {loadingMore &&
+              Array.from({ length: PER_PAGE }).map((_, i) => (
+                <SkeletonCard key={`skeleton-${i}`} />
+              ))}
           </div>
         )}
 
-        {/* Infinite Scroll Sentinel */}
+        {/* Sentinel — observed by the single IntersectionObserver above */}
         {!initialLoading && products.length > 0 && (
-          <div ref={loaderRef} className="w-full py-8 flex items-center justify-center">
-            {loadingMore && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <svg
-                  className="animate-spin h-5 w-5 text-emerald-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  />
-                </svg>
-                Loading more products...
-              </div>
-            )}
+          <div ref={loaderRef} className="w-full h-4" />
+        )}
 
-            {!loadingMore && !hasMore && (
-              <p className="text-xs sm:text-sm text-gray-400">
-                You've seen it all — no more products.
-              </p>
-            )}
-          </div>
+        {!initialLoading && !loadingMore && !hasMore && products.length > 0 && (
+          <p className="text-center text-xs sm:text-sm text-gray-400 py-8">
+            You've seen it all — no more products.
+          </p>
         )}
       </div>
     </main>

@@ -30,6 +30,7 @@ const Profile = () => {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
   };
+  
 
   // Helper to get logged-in user ID securely from localStorage
   const getUserId = () => {
