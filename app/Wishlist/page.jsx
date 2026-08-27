@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, Trash2, ShoppingCart } from "lucide-react";
+import { Heart, Trash2, Eye } from "lucide-react";
 import { API_BASE_URL } from "@/lib/config";
+import { useRouter } from "next/navigation";
 
 const Wishlist = () => {
+  const router = useRouter();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -199,9 +201,12 @@ const Wishlist = () => {
                     {product?.name}
                   </h2>
 
-                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5 line-clamp-1">
-                    {product?.description || getStockStatus(product)}
-                  </p>
+                  <p
+                    className="text-gray-500 text-xs sm:text-sm mt-0.5 line-clamp-1"
+                    dangerouslySetInnerHTML={{
+                      __html: product?.description || getStockStatus(product),
+                    }}
+                  />
 
                   <p className="text-emerald-600 font-bold mt-2 text-base">
                     {getProductPrice(product)}
@@ -210,13 +215,22 @@ const Wishlist = () => {
 
                 {/* Right Side: Actions / Buttons */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs sm:text-sm rounded-lg flex items-center gap-1.5 transition">
-                    <ShoppingCart size={16} />
-                    <span className="hidden sm:inline">Add To Cart</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/Productdetail/${product?.slug}`);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-lg transition"
+                    title="View Details"
+                  >
+                    <Eye size={16} />
                   </button>
 
                   <button
-                    onClick={() => removeItem(item)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeItem(item);
+                    }}
                     className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg transition"
                     title="Remove Item"
                   >

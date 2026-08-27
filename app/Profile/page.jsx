@@ -3,12 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Camera, Check, ShieldCheck, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-<<<<<<< HEAD
 import { API_BASE_URL } from "@/lib/config";
 
-=======
-import { API_BASE_URL } from '@/lib/config';
->>>>>>> 65b50acb50177747f98ff57508108957f9185176
 
 const Profile = () => {
   // --- Profile Info States ---
@@ -30,6 +26,7 @@ const Profile = () => {
   
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json', // zaroori: Laravel ko batata hai ke JSON response chahiye, warna wo error par login page pe redirect (302) kar deta hai
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
   };
@@ -52,11 +49,7 @@ const Profile = () => {
           return;
         }
 
-<<<<<<< HEAD
         const response_api = await fetch(`${API_BASE_URL}/api/profile/${userId}`, {
-=======
-        const response_api = await fetch(`http://192.168.1.14:8000/api/profile/${userId}`, {
->>>>>>> 65b50acb50177747f98ff57508108957f9185176
           method: 'GET',
           headers: getAuthHeaders(),
         });
@@ -119,37 +112,58 @@ const Profile = () => {
   // --- Password Submit Handler ---
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('User ID not found. Please login again.');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match!');
       return;
     }
 
     try {
-<<<<<<< HEAD
-      const response = await fetch(`${API_BASE_URL}/api/profile/update/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/profile/update-password/${userId}`, {
         method: 'POST',
-=======
-      const response = await fetch(`http://192.168.1.14:8000/api/profile/update-password`, {
-        method: 'PUT',
->>>>>>> 65b50acb50177747f98ff57508108957f9185176
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          currentPassword,
-          newPassword,
+          current_password: currentPassword,
+          password: newPassword,
+          password_confirmation: confirmPassword,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update password');
+      // Agar backend ne redirect kiya (login/session expire), fetch usay follow kar leta hai
+      // aur response.ok true bhi aa sakta hai (redirected HTML page ke sath). Ye check
+      // us case ko pakadta hai taake galat "success" na dikhe.
+      if (response.redirected) {
+        throw new Error('Session expired ya unauthorized. Please login again.');
       }
 
-      toast.success('Password updated successfully!');
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Server ne JSON ki bajaye kuch aur wapas bheja — login/session check karein.');
+      }
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        // Laravel validation errors 422 par is shape me aate hain:
+        // { message: "...", errors: { current_password: ["..."], password: ["..."] } }
+        const firstFieldError =
+          resData.errors && Object.values(resData.errors)[0]?.[0];
+        throw new Error(firstFieldError || resData.message || 'Failed to update password');
+      }
+
+      toast.success(resData.message || 'Password updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
       console.error(error);
-      toast.error('Error updating password!');
+      toast.error(error.message || 'Error updating password!');
     }
   };
 
