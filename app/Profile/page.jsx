@@ -3,8 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Camera, Check, ShieldCheck, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+<<<<<<< HEAD
 import { API_BASE_URL } from "@/lib/config";
 
+=======
+import { API_BASE_URL } from '@/lib/config';
+>>>>>>> 65b50acb50177747f98ff57508108957f9185176
 
 const Profile = () => {
   // --- Profile Info States ---
@@ -48,7 +52,11 @@ const Profile = () => {
           return;
         }
 
+<<<<<<< HEAD
         const response_api = await fetch(`${API_BASE_URL}/api/profile/${userId}`, {
+=======
+        const response_api = await fetch(`http://192.168.1.14:8000/api/profile/${userId}`, {
+>>>>>>> 65b50acb50177747f98ff57508108957f9185176
           method: 'GET',
           headers: getAuthHeaders(),
         });
@@ -117,8 +125,13 @@ const Profile = () => {
     }
 
     try {
+<<<<<<< HEAD
       const response = await fetch(`${API_BASE_URL}/api/profile/update/${userId}`, {
         method: 'POST',
+=======
+      const response = await fetch(`http://192.168.1.14:8000/api/profile/update-password`, {
+        method: 'PUT',
+>>>>>>> 65b50acb50177747f98ff57508108957f9185176
         headers: getAuthHeaders(),
         body: JSON.stringify({
           currentPassword,

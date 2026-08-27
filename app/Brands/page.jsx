@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import { useState, useEffect } from "react";
+import { Award } from "lucide-react";
 
 import "swiper/css";
 import "swiper/css/pagination";
@@ -20,7 +21,6 @@ function Brands() {
         const res = await fetch(`${API_BASE_URL}/api/brands`);
         if (!res.ok) throw new Error("Failed to fetch brands");
         const response = await res.json();
-        // this endpoint returns a plain array, not { data: [...] }
         setBrands(Array.isArray(response) ? response : response.data || []);
       } catch (err) {
         console.error("Error fetching brands:", err);
@@ -34,25 +34,28 @@ function Brands() {
   }, []);
 
   return (
-    <section className="bg-white py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <section className="container mx-auto bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto container">
         {/* Section Header */}
-        <div className="mb-10">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-            Our Brands
-          </h2>
-          <p className="text-sm text-gray-500 mt-2">
-            Explore the trusted brands we offer
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-emerald-500" />
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+              Our Top Brands
+            </h2>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Browse items from your favorite trustworthy labels
           </p>
         </div>
 
         {/* Loading — shimmer grid */}
         {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 pb-10">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 pb-10">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-56 w-full animate-pulse rounded-2xl bg-gray-200"
+                className="h-36 w-full animate-pulse rounded-xl bg-gray-200"
               />
             ))}
           </div>
@@ -60,7 +63,7 @@ function Brands() {
 
         {/* Error / empty state */}
         {!loading && (error || brands.length === 0) && (
-          <div className="h-56 w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-2xl">
+          <div className="h-36 w-full flex items-center justify-center bg-gray-100 text-gray-500 text-sm rounded-xl">
             {error ? "Couldn't load brands." : "No brands available."}
           </div>
         )}
@@ -69,53 +72,83 @@ function Brands() {
         {!loading && !error && brands.length > 0 && (
           <Swiper
             modules={[Autoplay, Pagination]}
-            spaceBetween={20}
-            slidesPerView={1}
+            spaceBetween={16}
+            slidesPerView={6}
+            grabCursor={true}
+            allowTouchMove={true}
+            touchRatio={1}
+            simulateTouch={true}
             autoplay={{
               delay: 3000,
               disableOnInteraction: false,
             }}
-            pagination={{ clickable: true }}
-            loop={brands.length > 5}
-            breakpoints={{
-              640: { slidesPerView: 2 },
-              768: { slidesPerView: 3 },
-              1024: { slidesPerView: 5 },
+            pagination={{
+              clickable: true,
             }}
-            className="pb-10"
+            loop={brands.length > 6}
+            breakpoints={{
+              640: { slidesPerView: 3 },
+              768: { slidesPerView: 4 },
+              1024: { slidesPerView: 6 },
+            }}
+            className="brands-swiper pb-10"
           >
             {brands.map((brand) => (
               <SwiperSlide key={brand.id}>
-                <div className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-56 group cursor-pointer flex flex-col justify-end p-4 text-left border border-gray-100">
-                  {/* Brand Image */}
-                  <div className="absolute inset-0 z-0 bg-gray-200">
+                <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 h-36 flex flex-col items-center justify-center gap-3 p-4 cursor-pointer border border-gray-100">
+                  {/* Brand Logo */}
+                  <div className="relative w-full h-14 flex items-center justify-center pointer-events-none">
                     <Image
                       src={`${IMAGE_BASE_URL}/${brand.image}`}
                       alt={brand.name}
                       fill
                       unoptimized
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                      className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                      className="object-contain"
                     />
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                   </div>
 
-                  {/* Brand Info Content */}
-                  <div className="relative z-10">
-                    <h3 className="text-white font-bold text-base sm:text-lg tracking-wide drop-shadow-sm">
-                      {brand.name}
-                    </h3>
-                    <p className="text-gray-300 text-[11px] mt-0.5 font-medium">
-                      {brand.slug}
-                    </p>
-                  </div>
+                  {/* Brand Name */}
+                  <h3 className="text-gray-800 font-semibold text-sm text-center">
+                    {brand.name}
+                  </h3>
                 </div>
               </SwiperSlide>
             ))}
           </Swiper>
         )}
       </div>
+<style jsx global>{`
+  .brands-swiper {
+    padding-bottom: 32px !important;
+  }
+
+  .brands-swiper .swiper-pagination {
+    bottom: 0 !important;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .brands-swiper .swiper-pagination-bullet {
+    width: 8px !important;
+    height: 8px !important;
+    margin: 0 !important;
+    background: #d9d9d9 !important;
+    opacity: 1 !important;
+    border-radius: 9999px;
+    transition: all 0.3s ease;
+  }
+
+  .brands-swiper .swiper-pagination-bullet-active {
+    width: 8px !important;
+    height: 8px !important;
+    background: #10b981 !important;
+    opacity: 1 !important;
+  }
+`}</style>
+
     </section>
   );
 }

@@ -113,9 +113,9 @@ const Navbar = () => {
     };
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     const updateCart = () => {
-      const cart = JSON.parse(localStorage.getItem("cartItems")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
       const total = cart.reduce((sum, item) => sum + item.quantity, 0);
       setCartCount(total);
     };
@@ -265,7 +265,7 @@ const Navbar = () => {
   return (
     <>
       <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
-        <div className="container px-4 mx-auto sm:px-6 lg:px-10">
+        <div className="container  mx-auto ">
           {/* Header */}
           <div className="flex justify-between items-center h-20">
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -306,7 +306,7 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link href="/cartcom" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
                 {cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -391,7 +391,7 @@ const Navbar = () => {
 
         {/* --- BOTTOM NAVBAR --- */}
         <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-          <div className="container px-4 mx-auto sm:px-6 lg:px-10 flex items-center h-12 text-sm font-medium relative">
+          <div className="container  mx-auto flex items-center h-12 text-sm font-medium relative">
             <div
               className="relative"
               onMouseEnter={() => setIsCategoryOpen(true)}

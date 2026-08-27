@@ -13,6 +13,7 @@ const Hero = () => {
   const [sliders, setSliders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  
 
   useEffect(() => {
     const fetchSliders = async () => {
@@ -33,10 +34,46 @@ const Hero = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="h-[220px] lg:h-[78vh] lg:mt-0 mt-[40px] w-full animate-pulse bg-gray-200" />
-    );
-  }
+  return (
+    <div className="relative w-full h-[180px] xs:h-[220px] sm:h-[320px] md:h-[380px] lg:h-[435px] overflow-hidden bg-gray-200">
+      {/* Shimmer layer */}
+      <div className="absolute inset-0 shimmer" />
+
+      {/* Fake content to resemble the actual hero */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-full max-w-2xl px-6 text-center">
+          {/* Heading skeleton */}
+          <div className="mx-auto h-8 lg:h-12 w-2/3 rounded-md bg-gray-300" />
+
+          {/* Description skeleton */}
+          <div className="mx-auto mt-4 h-4 lg:h-6 w-1/2 rounded-md bg-gray-300" />
+        </div>
+      </div>
+
+      <style jsx>{`
+        .shimmer {
+          background: linear-gradient(
+            90deg,
+            rgba(229, 231, 235, 0) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            rgba(229, 231, 235, 0) 100%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.8s infinite;
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
 
   if (error || sliders.length === 0) {
     return (
@@ -47,7 +84,7 @@ const Hero = () => {
   }
 
   return (
-    <div>
+    <div >
       <Swiper
         modules={[Autoplay, Pagination]}
         autoplay={{
