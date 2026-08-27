@@ -135,25 +135,6 @@ export default function CartPage() {
     };
 
    
-    const removeItem = (id) => {
-        const updatedItems = cartItems.filter(
-            (item) => String(item.id) !== String(id)
-        );
-        setCartItems(updatedItems);
-        localStorage.setItem("cart", JSON.stringify(updatedItems));
-        window.dispatchEvent(new Event("cartUpdated"));
-
-        fetch(`${API_BASE_URL}/api/cart-remove-item/${id}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-            return res.json();
-        })
-        .then((data) => console.log("Database updated:", data))
-        .catch((err) => console.error("Database update error:", err));
-};
 
    // Delete Item Function
 const removeItem = (cartId) => {
