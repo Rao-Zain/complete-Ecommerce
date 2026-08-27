@@ -34,3 +34,77 @@ body {
   background: white !important;
   opacity: 1;
 }
+/* ==========================================
+   PRODUCT IMAGE SWIPER
+========================================== */
+
+.product-main-swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.product-main-swiper .swiper-button-prev,
+.product-main-swiper .swiper-button-next {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.5);
+  transition: background 0.2s ease;
+}
+
+.product-main-swiper .swiper-button-prev:hover,
+.product-main-swiper .swiper-button-next:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.product-main-swiper .swiper-button-prev::after,
+.product-main-swiper .swiper-button-next::after {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+}
+
+/* ==========================================
+   THUMBNAIL SWIPER
+========================================== */
+
+.product-thumbnail-swiper {
+  width: 100%;
+}
+
+.product-thumbnail-swiper .swiper-slide {
+  opacity: 0.65;
+  transition: opacity 0.2s ease;
+}
+
+.product-thumbnail-swiper .swiper-slide-thumb-active {
+  opacity: 1;
+}
+
+.product-thumbnail-swiper
+  .swiper-slide-thumb-active
+  > div {
+  border-color: #111827;
+  box-shadow: 0 0 0 1px #111827;
+}
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 640px) {
+  .product-main-swiper
+    .swiper-button-prev,
+  .product-main-swiper
+    .swiper-button-next {
+    width: 30px;
+    height: 30px;
+  }
+
+  .product-main-swiper
+    .swiper-button-prev::after,
+  .product-main-swiper
+    .swiper-button-next::after {
+    font-size: 10px;
+  }
+}

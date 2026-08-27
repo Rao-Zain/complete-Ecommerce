@@ -1,7 +1,13 @@
 // components/ProductReviews.jsx
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { X } from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Keyboard } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
 import { IMAGE_BASE_URL } from "@/lib/config";
 
 function timeAgo(dateString) {
@@ -21,6 +27,8 @@ function timeAgo(dateString) {
 }
 
 export default function ProductReviews({ product }) {
+  const [modalIndex, setModalIndex] = useState(null); // null = closed, otherwise index into reviewsWithImages
+
   if (!product) return null;
 
   const avgRating = Number(product.avg_rating) || 0;
@@ -36,6 +44,19 @@ export default function ProductReviews({ product }) {
     const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
     return { star: `${star} Star`, count, pct };
   });
+
+  // Every review currently renders the same product mainImage, so the
+  // swipeable modal lets you page through one slide per review that has an image.
+  const reviewsWithImages = mainImage
+    ? reviews.map((r) => ({ id: r.id, image: mainImage }))
+    : [];
+
+  const openModal = (reviewId) => {
+    const idx = reviewsWithImages.findIndex((r) => r.id === reviewId);
+    if (idx !== -1) setModalIndex(idx);
+  };
+
+  const closeModal = () => setModalIndex(null);
 
   return (
     <div className="mt-10 border-t border-gray-200 pt-6">
@@ -95,7 +116,7 @@ export default function ProductReviews({ product }) {
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-medium text-gray-800">
+                    <p className="text-xs font-medium text-gray-800">
                       {review.user?.name || "Verified Customer"}
                     </p>
                     <div className="flex items-center">
@@ -117,13 +138,18 @@ export default function ProductReviews({ product }) {
                 )}
               </div>
 
-              <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
+              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
                 {review.comment}
               </p>
 
               {mainImage && (
                 <div className="mt-2">
-                  <div className="relative w-[32px] h-[32px] rounded overflow-hidden border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => openModal(review.id)}
+                    className="relative w-[32px] h-[32px] rounded overflow-hidden border border-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500"
+                    aria-label="View review image"
+                  >
                     <Image
                       src={`${IMAGE_BASE_URL}/${mainImage}`}
                       alt="Reviewed product"
@@ -131,13 +157,74 @@ export default function ProductReviews({ product }) {
                       unoptimized
                       className="object-cover"
                     />
-                  </div>
+                  </button>
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Fullscreen Image Modal */}
+      {modalIndex !== null && reviewsWithImages.length > 0 && (
+        <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center">
+          {/* Close button — the ONLY way to close this modal */}
+          <button
+            type="button"
+            onClick={closeModal}
+            aria-label="Close image viewer"
+            className="absolute top-4 right-4 z-[1000] w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X size={22} />
+          </button>
+
+          <div
+            className="w-full h-full max-w-4xl max-h-[85vh] px-4"
+            // Stop any click inside the viewer area from bubbling to a
+            // parent handler — belt-and-braces since there is no
+            // backdrop-close handler here to begin with.
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Swiper
+              modules={[Navigation, Keyboard]}
+              navigation
+              keyboard={{ enabled: true }}
+              initialSlide={modalIndex}
+              className="w-full h-full review-image-swiper"
+            >
+              {reviewsWithImages.map((item, idx) => (
+                <SwiperSlide
+                  key={`${item.id}-${idx}`}
+                  className="flex items-center justify-center"
+                >
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={`${IMAGE_BASE_URL}/${item.image}`}
+                      alt="Reviewed product full view"
+                      fill
+                      unoptimized
+                      className="object-contain"
+                    />
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+        </div>
+      )}
+
+      {modalIndex !== null && (
+        <style jsx global>{`
+          .review-image-swiper .swiper-button-next,
+          .review-image-swiper .swiper-button-prev {
+            color: #fff;
+          }
+          .review-image-swiper .swiper-button-next::after,
+          .review-image-swiper .swiper-button-prev::after {
+            font-size: 22px;
+          }
+        `}</style>
+      )}
     </div>
   );
 }
