@@ -21,7 +21,7 @@ import {
 } from "react-icons/fa";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
-
+import toast from "react-hot-toast";
 
 const defaultImage =
   "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200";
@@ -117,24 +117,65 @@ export default function CheckoutPage() {
   // ============================================================
   // LOAD CART
   // ============================================================
-  useEffect(() => {
+// ============================================================
+// LOAD CART — now fetches the live server cart (source of truth)
+// when logged in, matching CartPage.jsx, instead of trusting
+// whatever happens to be cached in localStorage at mount time.
+// Falls back to localStorage for guests or if the fetch fails.
+// ============================================================
+useEffect(() => {
+  const loadCart = async () => {
+    const token = localStorage.getItem("token") || "";
+    const userId = localStorage.getItem("userId");
+
+    if (token && userId && userId !== "undefined" && userId !== "null") {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const items = Array.isArray(data) ? data : data.data || [];
+
+          if (items.length > 0) {
+            setCartItems(items);
+            localStorage.setItem("cart", JSON.stringify(items));
+            return;
+          }
+          // Server says cart is genuinely empty — fall through to check
+          // localStorage in case a Buy Now item is waiting there instead.
+        }
+      } catch (error) {
+        console.error("Checkout cart fetch error:", error);
+        // fall through to localStorage fallback below
+      }
+    }
+
+    // Guest, no token, or server fetch came back empty/failed —
+    // use whatever's cached locally (this is what makes "Buy Now" work,
+    // since that flow writes directly to localStorage, not the server).
     try {
       const savedCart = localStorage.getItem("cart");
-
       if (savedCart) {
         const parsed = JSON.parse(savedCart);
-
-        if (Array.isArray(parsed)) {
-          setCartItems(parsed);
-        } else {
-          setCartItems([parsed]);
-        }
+        setCartItems(Array.isArray(parsed) ? parsed : [parsed]);
+      } else {
+        setCartItems([]);
       }
     } catch (error) {
       console.error("Cart loading error:", error);
       setCartItems([]);
     }
-  }, []);
+  };
+
+  loadCart();
+}, []);
 
   // ============================================================
   // CHECKOUT API
@@ -431,47 +472,35 @@ export default function CheckoutPage() {
   // PLACE ORDER
   // POST /api/place-order
   // ============================================================
-  const handlePlaceOrder = async () => {
-    if (!validateForm()) {
-      return;
-    }
+ const handlePlaceOrder = async () => {
+  if (!validateForm()) {
+    return;
+  }
 
-    if (cartItems.length === 0) {
-      alert("Your cart is empty.");
-      return;
-    }
+  if (cartItems.length === 0) {
+   
+     toast.error("Your cart is empty.");
+          return;
+  }
 
-    try {
-      setOrderLoading(true);
+  try {
+    setOrderLoading(true);
 
-      const token =
-        localStorage.getItem("token") || "";
+    const token = localStorage.getItem("token") || "";
 
-      let userId = null;
+    // Fixed: your app stores this as a plain "userId" key
+    // (see Navbar login/register), never as a "user" object.
+    const storedUserId = localStorage.getItem("userId");
+    const userId =
+      storedUserId && storedUserId !== "undefined" && storedUserId !== "null"
+        ? storedUserId
+        : null;
 
-      try {
-        const storedUser =
-          localStorage.getItem("user");
+    const fullName = `${form.firstName} ${form.lastName}`.trim();
 
-        if (storedUser) {
-          const parsedUser =
-            JSON.parse(storedUser);
-
-          userId =
-            parsedUser?.id ||
-            parsedUser?._id ||
-            null;
-        }
-      } catch (error) {
-        console.log(error);
-      }
-
-      const fullName =
-        `${form.firstName} ${form.lastName}`.trim();
-
-      const payload = {
-        user_id: userId,
-        userId: userId,
+    const payload = {
+      user_id: userId,
+      userId: userId,
 
         name: fullName,
 
@@ -635,15 +664,13 @@ export default function CheckoutPage() {
               result.errors
             )[0];
 
-          alert(
-            result.errors[firstKey]?.[0] ||
-              "Validation error"
-          );
+          toast.error(
+          result.errors[firstKey]?.[0] || "Validation error"
+        );
         } else {
-          alert(
-            result?.message ||
-              "Order place nahi ho saka."
-          );
+          toast.error(
+          result?.message || "Order place nahi ho saka."
+        );
         }
       }
     } catch (error) {
@@ -652,9 +679,9 @@ export default function CheckoutPage() {
         error
       );
 
-      alert(
-        "Network error! Server check karein."
-      );
+      
+       toast.error("Network error! Server check karein.");
+            return;
     } finally {
       setOrderLoading(false);
     }
@@ -735,7 +762,7 @@ export default function CheckoutPage() {
             {/* PERSONAL INFORMATION */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
 
-              <div className="px-5 py-4 border-b flex items-center gap-3">
+              <div className="px-5 py-4 flex items-center gap-3 ">
 
                 <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                   <FaUser />
@@ -862,7 +889,7 @@ export default function CheckoutPage() {
 
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
 
-              <div className="px-5 py-4 border-b flex items-center gap-3">
+              <div className="px-5 py-4 border-b border-gray-200  flex items-center gap-3">
 
                 <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                   <FaMapMarkerAlt />
@@ -1093,7 +1120,7 @@ export default function CheckoutPage() {
 
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
 
-              <div className="px-5 py-4 border-b flex items-center gap-3">
+              <div className="px-5 py-4 border-b border-gray-200   flex items-center gap-3">
 
                 <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                   <FaTruck />
@@ -1171,7 +1198,7 @@ export default function CheckoutPage() {
 
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
 
-              <div className="px-5 py-4 border-b">
+              <div className="px-5 py-4 border-b border-gray-200 ">
 
                 <h2 className="font-bold text-gray-800">
                   Payment Options
@@ -1341,11 +1368,11 @@ export default function CheckoutPage() {
           {/* RIGHT - ORDER SUMMARY */}
           {/* ================================================= */}
 
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-36">
 
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
 
-              <div className="flex items-center gap-3 pb-4 border-b">
+              <div className="flex items-center gap-3 pb-4 border-b border-gray-200 ">
 
                 <div className="w-9 h-9 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
                   <FaShoppingBag />
@@ -1473,7 +1500,7 @@ export default function CheckoutPage() {
                   </strong>
                 </div>
 
-                <div className="border-t pt-4 flex justify-between">
+                <div className="border-t border-gray-200  pt-4 flex justify-between">
 
                   <span className="font-bold text-gray-800">
                     Total Amount

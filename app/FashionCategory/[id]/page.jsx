@@ -2,12 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
-import { FaShoppingCart, FaStar, FaHeart } from "react-icons/fa";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
-
-
-// 👇 Apni API base yahan set karein (jaisa Navbar mein tha)
 
 // Shimmer Loader Component for Smooth Loading Experience
 const ShimmerLoader = () => {
@@ -32,19 +29,42 @@ const ShimmerLoader = () => {
               </div>
             </div>
 
-            {/* 3. PRODUCTS SECTION SHIMMER (10 Cards) */}
+            {/* 3. PRODUCTS SECTION SHIMMER — matches Bestselling's card skeleton */}
             <div className="mb-6">
               <div className="w-56 h-6 bg-gray-300 rounded mb-4"></div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl overflow-hidden p-3 shadow-sm">
-                    <div className="w-full h-48 lg:h-56 bg-gray-200 rounded-lg mb-3"></div>
-                    <div className="w-3/4 h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="w-1/2 h-3 bg-gray-200 rounded mb-3"></div>
-                    <div className="flex justify-between items-center">
-                      <div className="w-1/3 h-5 bg-gray-200 rounded"></div>
-                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+              <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm"
+                  >
+                    <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse">
+                      <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 h-4 sm:h-5 w-14 sm:w-20 bg-gray-300 rounded animate-pulse" />
+                      <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gray-300 rounded-full animate-pulse" />
+                    </div>
+
+                    <div className="p-2 sm:p-3 flex flex-col">
+                      <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-full bg-gray-200 rounded mt-1.5 animate-pulse" />
+
+                      <div className="flex items-center gap-1 mt-1.5 sm:mt-2">
+                        {Array.from({ length: 5 }).map((_, star) => (
+                          <div
+                            key={star}
+                            className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded-sm animate-pulse"
+                          />
+                        ))}
+                        <div className="h-3 w-7 bg-gray-200 rounded ml-1 animate-pulse" />
+                      </div>
+
+                      <div className="flex items-start justify-between gap-1 mt-2">
+                        <div className="flex flex-col gap-1">
+                          <div className="h-4 sm:h-5 w-16 sm:w-20 bg-gray-200 rounded animate-pulse" />
+                          <div className="h-3 w-12 sm:w-16 bg-gray-200 rounded animate-pulse" />
+                        </div>
+                        <div className="h-5 sm:h-6 w-16 sm:w-20 bg-gray-200 rounded-full animate-pulse" />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -65,7 +85,6 @@ const FashionCategory = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch categories and products from API based on current id
   useEffect(() => {
     setLoading(true);
     fetch(`${API_BASE_URL}/api/categories/products/${id || 1}`)
@@ -93,7 +112,6 @@ const FashionCategory = () => {
       });
   }, [id]);
 
-  // Agar loading true hai toh Shimmer component render hoga
   if (loading) {
     return <ShimmerLoader />;
   }
@@ -162,7 +180,7 @@ const FashionCategory = () => {
               </div>
             )}
 
-            {/* 3. PRODUCTS SECTION */}
+            {/* 3. PRODUCTS SECTION — same card design as Bestselling */}
             <div className="mb-6">
               <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 tracking-tight flex items-center gap-2">
                 <span className="w-2 h-5 bg-pink-600 rounded-full inline-block flex-shrink-0"></span>
@@ -172,82 +190,121 @@ const FashionCategory = () => {
               {products.length === 0 ? (
                 <p className="text-gray-500 text-sm">No products found in this category.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
                   {products.map((product) => {
-                    const variant = product.main_variant || product.variants?.[0];
-                    const imagePath = product.main_variant_image?.image_path
-                      ? `${IMAGE_BASE_URL}/${product.main_variant_image.image_path}`
-                      : product.image
-                        ? `${IMAGE_BASE_URL}/${product.image}`
-                        : "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=500";
+                    const firstVariant = product.variants?.[0];
+                    const price = firstVariant ? Number(firstVariant.price) : null;
+                    const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
+
+                    const totalStock =
+                      product.variants?.reduce(
+                        (sum, v) => sum + (Number(v.stock) || 0),
+                        0
+                      ) || 0;
+
+                    const reviews = product.reviews || [];
+                    const avgRating =
+                      reviews.length > 0
+                        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                        : 0;
+
+                    const imagePath = product.main_variant_image?.image_path;
 
                     return (
-                      <div
+                      <Link
+                        href={`/Productdetail/${product.slug}`}
                         key={product.id}
-                        className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group w-full flex flex-col justify-between relative"
+                        className="bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
                       >
-                        {/* Top Seller Badge & Heart Icon Over Image */}
-                        <div className="relative bg-gray-100 overflow-hidden">
-                          <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded tracking-wider uppercase shadow">
-                            Top Seller
+                        <div className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
+                          {/* Image & Badges Container */}
+                          <div className="relative bg-gray-100 h-34 xs:h-36 sm:h-44 md:h-48 lg:h-52 w-full">
+                            {product.product_type === "featured" && (
+                              <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-red-600 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
+                                Top Seller
+                              </span>
+                            )}
+
+                            <button className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white p-1 sm:p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10">
+                              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                />
+                              </svg>
+                            </button>
+
+                            {imagePath && (
+                              <Image
+                                src={`${IMAGE_BASE_URL}/${imagePath}`}
+                                alt={product.name}
+                                fill
+                                unoptimized
+                                sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                                className="object-cover object-center"
+                              />
+                            )}
                           </div>
-                          <button
-                            type="button"
-                            className="absolute top-2 right-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center text-gray-600 shadow hover:text-red-500 transition cursor-pointer border-none"
-                          >
-                            <FaHeart className="text-xs" />
-                          </button>
 
-                          <Link href={`/Productdetail/${product.slug}`}>
-                            <img
-                              src={imagePath}
-                              alt={product.name}
-                              className="w-full h-48 lg:h-56 object-cover group-hover:scale-105 transition duration-300"
-                            />
-                          </Link>
-                        </div>
-
-                        {/* Card Content */}
-                        <div className="p-3 flex flex-col justify-between flex-grow">
-                          <div>
-                            <Link href={`/Productdetail/${product.slug}`}>
-                              <h2 className="text-sm font-bold text-gray-800 line-clamp-1 hover:text-black">
+                          {/* Product Info */}
+                          <div className="p-2 sm:p-3 flex flex-col flex-grow justify-between">
+                            <div>
+                              <h4 className="font-medium xs:text-[14px] md:text-[16px] text-gray-800 truncate group-hover:text-black capitalize">
                                 {product.name}
-                              </h2>
-                            </Link>
-                            <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">
-                              {product.short_description || "Explore high quality and comfortable material..."}
-                            </p>
+                              </h4>
+                              <p
+                                className="text-[11px] sm:text-xs text-gray-500 mt-0.5 line-clamp-1 sm:line-clamp-1"
+                                dangerouslySetInnerHTML={{
+                                  __html: product.description || "",
+                                }}
+                              />
 
-                            {/* Rating Stars */}
-                            <div className="flex items-center gap-1 mt-1 text-yellow-400 text-[10px]">
-                              {[...Array(5)].map((_, i) => (
-                                <FaStar key={i} />
-                              ))}
-                              <span className="text-gray-400 ml-1">(5.0)</span>
-                            </div>
-                          </div>
-
-                          {/* Price and Stock Section in One Line */}
-                          <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between gap-1">
-                            <div className="flex items-baseline gap-1.5 overflow-hidden">
-                              <h3 className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">
-                                Rs {Math.floor(Number(variant?.price || product.price)) || "N/A"}
-                              </h3>
-                              {variant?.cut_price && (
-                                <span className="text-[10px] text-gray-400 line-through whitespace-nowrap">
-                                  Rs {Math.floor(Number(variant.cut_price))}
+                              {/* Rating */}
+                              <div className="flex items-center mt-1.5 sm:mt-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <svg
+                                    key={i}
+                                    className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(avgRating)
+                                      ? "text-yellow-400 fill-yellow-400"
+                                      : "text-gray-300 fill-gray-200"
+                                      }`}
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                  </svg>
+                                ))}
+                                <span className="text-[11px] sm:text-[12px] text-gray-500 ml-1">
+                                  ({avgRating.toFixed(1)})
                                 </span>
-                              )}
+                              </div>
                             </div>
 
-                            {/* Stock Badge - Compact */}
-                            <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex-shrink-0">
-                              {variant?.stock || product.stock || "216"} In Stock
-                            </span>
+                            {/* Pricing & Stock */}
+                            <div className="mt-1.5 border-gray-100">
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="flex flex-col">
+                                  {price !== null && (
+                                    <span className="text-emerald-600 font-bold text-sm sm:text-lg md:text-md lg:text-sm leading-tight">
+                                      Rs {price.toLocaleString()}
+                                    </span>
+                                  )}
+                                  {cutPrice !== null && cutPrice > price && (
+                                    <span className="text-gray-500 text-[9px] sm:text-[12px] line-through leading-tight">
+                                      Rs {cutPrice.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <span className="bg-emerald-100 mt-1.5 rounded-full text-emerald-700 text-[10px] sm:text-[11px] font-medium px-1 sm:px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap self-start">
+                                  <span className="text-emerald-800 font-bold text-[10px]">{totalStock}</span> In Stock
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

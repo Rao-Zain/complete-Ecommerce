@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowRight, FaTimes } from "react-icons/fa";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
@@ -11,33 +12,44 @@ export default function CartPage() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
 
-
-
     const getAuthHeaders = () => {
         const token = localStorage.getItem('token');
 
         return {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
     };
 
+    // Reads the same way Checkout.jsx does, with a fallback to a direct
+    // "userId" key in case some part of the app still sets it that way.
     const getUserId = () => {
-        return localStorage.getItem('userId');
+        const direct = localStorage.getItem('userId');
+        if (direct && direct !== 'undefined' && direct !== 'null') return direct;
+
+        try {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const parsed = JSON.parse(storedUser);
+                return parsed?.id || parsed?._id || null;
+            }
+        } catch (e) {
+            console.error('Error parsing stored user', e);
+        }
+        return null;
     };
 
-   
     useEffect(() => {
-
-
-
         const fetchCartData = async () => {
             try {
                 const userId = getUserId();
                 const token = localStorage.getItem('token');
 
+                console.log('CartPage auth check:', { userId, hasToken: !!token });
+
                 if (!userId || !token) {
-                    toast.error('Please login first to view your profile.');
+                    toast.error('Please login first to view your cart.');
                     setLoading(false);
                     return;
                 }
@@ -48,82 +60,32 @@ export default function CartPage() {
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch profile data');
+                    throw new Error('Failed to fetch cart data');
                 }
+
                 const data = await response.json();
+                console.log('CART API response:', data);
 
                 const items = Array.isArray(data) ? data : data.data || [];
-                if (items && items.length >= 0) {
-                    setCartItems(items);
-                    localStorage.setItem("cart", JSON.stringify(items));
-                }
-
+                setCartItems(items);
+                localStorage.setItem("cart", JSON.stringify(items));
 
             } catch (error) {
                 console.error(error);
-                toast.error('Failed to load profile data from server');
+                toast.error('Failed to load cart data from server');
             } finally {
                 setLoading(false);
             }
         };
 
-
-
-        // const storedUserID = localStorage.getItem("userId");
-        // alert(storedUserID)
-        // setUserID(storedUserID);
-
-        // const localCart = localStorage.getItem("cart");
-        // if (localCart) {
-        //     try {
-        //         setCartItems(JSON.parse(localCart));
-        //     } catch (e) {
-        //         console.error("Error parsing local cart", e);
-        //     }
-        // }
-
-        // if (!storedUserID) {
-        //     setLoading(false);
-        //     return;
-        // }
-
-
-
-        // if (!response_api.ok) {
-        //     throw new Error('Failed to fetch profile data');
-        // }
-
-
-        // API se Cart data fetch karna
-        // fetch(`${API_BASE_URL}/api/cart?user_id=${storedUserID}`), {
-        //     method: 'GET',
-        //     headers: getAuthHeaders(),
-        // }.then((res) => res.json())
-        // .then((data) => {
-        //     const items = Array.isArray(data) ? data : data.data || [];
-        //     if (items && items.length >= 0) {
-        //         setCartItems(items);
-        //         localStorage.setItem("cart", JSON.stringify(items));
-        //     }
-        // })
-        // .catch((err) => {
-        //     console.error("Fetch Error:", err);
-        // })
-        // .finally(() => {
-        //     setLoading(false);
-        // });
         fetchCartData();
     }, []);
 
-    
     const updateQuantityInDB = (cartId, userId, newQty) => {
         if (!userId) return;
         fetch(`${API_BASE_URL}/api/cart-update-quantity/${cartId}`, {
             method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify({
                 user_id: userId,
                 quantity: newQty
@@ -134,39 +96,33 @@ export default function CartPage() {
             .catch((err) => console.error("Database update error:", err));
     };
 
-   
+    const removeItem = (cartId) => {
+        const userId = getUserId();
 
-   // Delete Item Function
-const removeItem = (cartId) => {
-    const fixedUserId = 2;
+        const updatedItems = cartItems.filter(
+            (item) => String(item.id) !== String(cartId)
+        );
+        setCartItems(updatedItems);
+        localStorage.setItem("cart", JSON.stringify(updatedItems));
+        window.dispatchEvent(new Event("cartUpdated"));
 
-    // Pehle UI se turant hata dein
-    const updatedItems = cartItems.filter(
-        (item) => String(item.id) !== String(cartId)
-    );
-    setCartItems(updatedItems);
-    localStorage.setItem("cart", JSON.stringify(updatedItems));
-    window.dispatchEvent(new Event("cartUpdated"));
-
-    // Phir backend se bhi delete karein - POST method, id URL me
-    fetch(`${API_BASE_URL}/api/cart-remove-item/${cartId}`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-            user_id: fixedUserId
+        fetch(`${API_BASE_URL}/api/cart-remove-item/${cartId}`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                user_id: userId
+            })
         })
-    })
-        .then((res) => {
-            if (!res.ok) {
-                throw new Error(`Remove failed with status ${res.status}`);
-            }
-            return res.json();
-        })
-        .then((data) => console.log("Item removed:", data))
-        .catch((err) => console.error("Remove API error:", err));
-};
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error(`Remove failed with status ${res.status}`);
+                }
+                return res.json();
+            })
+            .then((data) => console.log("Item removed:", data))
+            .catch((err) => console.error("Remove API error:", err));
+    };
 
-    
     const increaseQty = (id) => {
         let newQty = 1;
         const updated = cartItems.map((item) => {
@@ -180,10 +136,9 @@ const removeItem = (cartId) => {
         setCartItems(updated);
         localStorage.setItem("cart", JSON.stringify(updated));
         window.dispatchEvent(new Event("cartUpdated"));
-        updateQuantityInDB(id, newQty);
+        updateQuantityInDB(id, getUserId(), newQty);
     };
 
-    
     const decreaseQty = (id) => {
         let newQty = 1;
         let shouldUpdate = false;
@@ -201,11 +156,10 @@ const removeItem = (cartId) => {
             setCartItems(updated);
             localStorage.setItem("cart", JSON.stringify(updated));
             window.dispatchEvent(new Event("cartUpdated"));
-            updateQuantityInDB(id, newQty);
+            updateQuantityInDB(id, getUserId(), newQty);
         }
     };
 
-    
     const getProductImage = (item) => {
         const variant = item?.variant;
 
@@ -220,7 +174,6 @@ const removeItem = (cartId) => {
             variant?.image_path ||
             variant?.image;
 
-        
         if (!path) return "/placeholder.png";
 
         if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -250,7 +203,6 @@ const removeItem = (cartId) => {
     return (
         <main className="min-h-screen bg-gray-50 py-10 ">
             <div className="container px-4 mx-auto sm:px-6 lg:px-10 max-w-7xl">
-                {/* Page Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-gray-800">My Cart</h1>
                     <p className="text-gray-500 text-sm mt-1">Review your items before checkout</p>
@@ -275,7 +227,7 @@ const removeItem = (cartId) => {
                     </div>
                 ) : (
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
-                        
+
                         <div className="lg:col-span-2 space-y-4">
                             {cartItems.map((item) => {
                                 const variant = item.variant;
@@ -286,7 +238,6 @@ const removeItem = (cartId) => {
                                         key={item.id}
                                         className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 transition-all"
                                     >
-                                     
                                         <div className="flex items-center gap-4 w-full sm:w-auto">
                                             <img
                                                 src={getProductImage(item)}
@@ -310,7 +261,6 @@ const removeItem = (cartId) => {
                                             </div>
                                         </div>
 
-                                        
                                         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
                                             <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
                                                 <button
@@ -347,7 +297,6 @@ const removeItem = (cartId) => {
                             })}
                         </div>
 
-                        
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
                             <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#00A651]"></span>

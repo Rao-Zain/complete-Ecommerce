@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
@@ -21,7 +22,7 @@ import "swiper/css/navigation";
 export default function Productdetail() {
   const params = useParams();
   const slug = params.slug;
-
+const router = useRouter();
   // =========================================================
   // STATE
   // =========================================================
@@ -29,7 +30,7 @@ export default function Productdetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-    const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const [addingToCart, setAddingToCart] = useState(false);
 
@@ -67,8 +68,8 @@ export default function Productdetail() {
 
       ...(token
         ? {
-            Authorization: `Bearer ${token}`,
-          }
+          Authorization: `Bearer ${token}`,
+        }
         : {}),
     };
   };
@@ -163,9 +164,9 @@ export default function Productdetail() {
   const productImages =
     product?.images?.length > 0
       ? product.images
-          .slice()
-          .sort((a, b) => Number(b.is_main) - Number(a.is_main))
-          .map((img) => `${IMAGE_BASE_URL}/${img.image_path}`)
+        .slice()
+        .sort((a, b) => Number(b.is_main) - Number(a.is_main))
+        .map((img) => `${IMAGE_BASE_URL}/${img.image_path}`)
       : [];
 
   // =========================================================
@@ -308,7 +309,7 @@ export default function Productdetail() {
   // ADD TO CART
   // =========================================================
 
- const handleAddToCart = async () => {
+  const handleAddToCart = async () => {
     const token = localStorage.getItem("token");
     const userId = getUserId();
 
@@ -370,6 +371,7 @@ export default function Productdetail() {
 
   const handleBuyNow = () => {
   const token = localStorage.getItem("token");
+  const userId = getUserId();
 
   if (!token) {
     window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
@@ -390,6 +392,29 @@ export default function Productdetail() {
     toast.error("Not enough stock available.");
     return;
   }
+
+   const buyNowItem = {
+    id: product.id,
+    quantity,
+    variant: {
+      id: activeVariant.id,
+      price: activeVariant.price,
+      cut_price: activeVariant.cut_price,
+      color_name: activeVariant.color_name,
+      size: activeVariant.size,
+      variant_image: activeVariant.variant_image,
+      product: {
+        id: product.id,
+        name: product.name,
+      },
+    },
+  };
+
+  // Buy Now bypasses the existing cart — checkout shows only this item.
+  localStorage.setItem("cart", JSON.stringify([buyNowItem]));
+  window.dispatchEvent(new Event("cartUpdated"));
+
+  router.push("/Checkout");
 
     toast.success("Ready for checkout!");
   };
@@ -489,7 +514,7 @@ export default function Productdetail() {
             md:col-span-1
             lg:col-span-5
             min-w-0">
-           
+
 
             <div className="relative
               w-full
@@ -658,11 +683,10 @@ export default function Productdetail() {
                     flex-shrink-0
                     snap-start
                     transition-all
-                    ${
-                      currentIndex === index
-                        ? "border-gray-500 ring-1 ring-gray-400"
-                        : "border-gray-300 hover:opacity-80"
-                    }
+                    ${currentIndex === index
+                            ? "border-gray-500 ring-1 ring-gray-400"
+                            : "border-gray-300 hover:opacity-80"
+                          }
                   `}
                       >
                         <Image
@@ -732,10 +756,9 @@ export default function Productdetail() {
                 className={`
                   inline-flex items-center px-3 py-1 rounded-full
                   text-xs sm:text-sm font-medium
-                  ${
-                    stock > 0
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
+                  ${stock > 0
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
                   }
                 `}
               >
@@ -787,7 +810,7 @@ export default function Productdetail() {
                         min-h-9
                         flex
                         items-center
-                        gap-2
+                        gap-2 cursor-pointer
                         px-2
                         sm:px-2.5
                         rounded-md
@@ -796,11 +819,10 @@ export default function Productdetail() {
                         sm:text-xs
                         font-medium
                         transition-all
-                        ${
-                          selectedColor === color
+                        ${selectedColor === color
                             ? "border-gray-400 bg-gray-100 shadow-sm"
                             : "border-gray-300 bg-white hover:bg-gray-50"
-                        }
+                          }
                       `}
                       >
                         {imageUrl && (
@@ -856,15 +878,14 @@ export default function Productdetail() {
                       justify-center
                       rounded-md
                       border
-                      text-xs
+                      text-xs cursor-pointer
                       sm:text-sm
                       font-semibold
                       transition-all
-                      ${
-                        selectedSize === size
+                      ${selectedSize === size
                           ? "border-gray-400 bg-gray-100 shadow-sm"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                      }
+                        }
                     `}
                     >
                       {size}
@@ -892,7 +913,7 @@ export default function Productdetail() {
                 <button
                   type="button"
                   onClick={handleDecrement}
-                  className="w-10 h-full flex items-center justify-center hover:bg-gray-100"
+                  className="w-10 h-full flex items-center justify-center hover:bg-gray-100 cursor-pointer"
                 >
                   -
                 </button>
@@ -904,7 +925,7 @@ export default function Productdetail() {
                 <button
                   type="button"
                   onClick={handleIncrement}
-                  className="w-10 h-full flex items-center justify-center hover:bg-gray-100"
+                  className="w-10 h-full flex items-center justify-center hover:bg-gray-100 cursor-pointer"
                 >
                   +
                 </button>
@@ -920,7 +941,7 @@ export default function Productdetail() {
                 disabled={addingToCart || !activeVariant || stock === 0}
                 className="
                   w-full sm:w-[180px] h-11 rounded-md bg-black text-white
-                  text-sm font-medium hover:bg-gray-800
+                  text-sm font-medium hover:bg-gray-800 cursor-pointer
                   disabled:opacity-50 disabled:cursor-not-allowed transition
                 "
               >
@@ -932,11 +953,11 @@ export default function Productdetail() {
                 onClick={handleBuyNow}
                 disabled={!activeVariant || stock === 0}
                 className="
-                  w-full sm:w-[180px] h-11 rounded-md bg-orange-600 text-white
-                  text-sm font-medium hover:bg-orange-700
-                  disabled:opacity-50 disabled:cursor-not-allowed transition
-                  flex items-center justify-center gap-1
-                "
+    w-full sm:w-[180px] h-11 rounded-md bg-orange-600 text-white
+    text-sm font-medium hover:bg-orange-700 cursor-pointer
+    disabled:opacity-50 disabled:cursor-not-allowed transition
+    flex items-center justify-center gap-1
+  "
               >
                 <MdFlashOn className="w-5 h-5" />
                 Buy Now

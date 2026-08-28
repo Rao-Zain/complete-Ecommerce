@@ -38,6 +38,9 @@ const Navbar = () => {
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
 
+  // Mobile drawer's own category accordion state (independent of desktop hover menu)
+  const [mobileOpenCategoryId, setMobileOpenCategoryId] = useState(null);
+
   // Dropdown & Modal States
   const [showDropdown, setShowDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -98,7 +101,7 @@ const Navbar = () => {
     };
   }, []);
 
-  // Wishlist & Cart Counters
+  // Wishlist Counter
   useEffect(() => {
     const updateCount = () => {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
@@ -109,16 +112,52 @@ const Navbar = () => {
     return () => window.removeEventListener("wishlistUpdated", updateCount);
   }, []);
 
+  // Cart Counter — fixed: fetches the live server cart when logged in
+  // (since add-to-cart writes to the server, not localStorage), and
+  // falls back to localStorage for guests / the Buy Now flow.
+ // Cart Counter — counts DISTINCT items (line items), not total quantity.
+// So 1 shirt x3 qty = count 1, but shirt + shoes = count 2.
 useEffect(() => {
-    const updateCart = () => {
-      const cart = JSON.parse(localStorage.getItem("cart")) || [];
-      const total = cart.reduce((sum, item) => sum + item.quantity, 0);
-      setCartCount(total);
-    };
-    updateCart();
-    window.addEventListener("cartUpdated", updateCart);
-    return () => window.removeEventListener("cartUpdated", updateCart);
-  }, []);
+  const updateCart = async () => {
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
+    if (token && userId && userId !== "undefined" && userId !== "null") {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : data.data || [];
+          setCartCount(items.length); // ← distinct items, not summed quantity
+          localStorage.setItem("cart", JSON.stringify(items));
+          return;
+        }
+      } catch (err) {
+        console.error("Cart count fetch error:", err);
+      }
+    }
+
+    // Guest, logged-out, or fetch failed — fall back to localStorage
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    setCartCount(cart.length); // ← distinct items, not summed quantity
+  };
+
+  updateCart();
+  window.addEventListener("cartUpdated", updateCart);
+  window.addEventListener("authUpdated", updateCart);
+  return () => {
+    window.removeEventListener("cartUpdated", updateCart);
+    window.removeEventListener("authUpdated", updateCart);
+  };
+}, []);
 
   // 🔥 Opens the login/register modal when another component (e.g. the
   // product page) dispatches "open-auth-modal" — lets any page trigger
@@ -131,12 +170,23 @@ useEffect(() => {
     return () => window.removeEventListener("open-auth-modal", handleOpenAuthModal);
   }, []);
 
+  // Lock body scroll while the mobile drawer is open
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen]);
+
+  const closeMobileMenu = () => {
+    setMenuOpen(false);
+    setMobileOpenCategoryId(null);
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     setUser({ name: "Guest", email: "guest@example.com" });
     setIsLoggedIn(false);
     setShowDropdown(false);
+    closeMobileMenu();
     window.dispatchEvent(new Event("authUpdated"));
 
     // 🔥 Alert ki jagah ab seedha login modal show hoga
@@ -146,6 +196,7 @@ useEffect(() => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      closeMobileMenu();
       router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
     }
   };
@@ -270,12 +321,12 @@ useEffect(() => {
   return (
     <>
       <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
-        <div className="container  mx-auto ">
+        <div className="container mx-auto">
           {/* Header */}
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+          <div className="flex justify-between items-center h-16 md:h-20 px-3 md:px-0">
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0" onClick={closeMobileMenu}>
               <div>
-                <h2 className="font-extrabold text-2xl tracking-tight text-white">
+                <h2 className="font-extrabold text-xl md:text-2xl tracking-tight text-white">
                   Shop<span className="text-blue-500">Nest</span>
                 </h2>
               </div>
@@ -388,17 +439,38 @@ useEffect(() => {
               </div>
             </div>
 
-            <button className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400" onClick={() => setMenuOpen(!menuOpen)}>
-              {menuOpen ? <FaTimes /> : <FaBars />}
-            </button>
+            {/* Mobile: cart icon stays visible next to the hamburger so it's reachable without opening the drawer */}
+            <div className="flex md:hidden items-center gap-1">
+              <Link href="/CartProduct" className="relative p-2 text-white">
+                <FaShoppingCart className="text-lg" />
+                {cartCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <button
+                className="text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+              >
+                {menuOpen ? <FaTimes /> : <FaBars />}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* --- BOTTOM NAVBAR --- */}
-        <div className="hidden md:block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-          <div className="container  mx-auto flex items-center h-12 text-sm font-medium relative">
+        {/* Was `hidden md:block` (fully invisible on phones). Now visible on
+            all screen sizes: desktop keeps the hover mega-menu + centered
+            links; mobile gets a horizontally-scrollable link row instead
+            (hover menus don't work on touch, so the full category tree
+            lives in the slide-out drawer below). */}
+        <div className="block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
+          <div className="container mx-auto flex items-center h-11 md:h-12 text-sm font-medium relative px-2 md:px-0">
             <div
-              className="relative"
+              className="relative hidden md:block"
               onMouseEnter={() => setIsCategoryOpen(true)}
               onMouseLeave={resetCategoryMenu}
             >
@@ -479,15 +551,175 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 text-xs font-semibold tracking-wide text-gray-700">
-              <Link href="/" className="hover:text-blue-600 transition py-2">Home</Link>
-              <Link href="/Products" className="hover:text-blue-600 transition py-2">Products</Link>
-              <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2">Categories</Link>
-              <Link href="/Contact" className="hover:text-blue-600 transition py-2">Contact Us</Link>
+            {/* Mobile: horizontally-scrollable pill row. Desktop: centered links (unchanged). */}
+            <div className="flex md:absolute md:left-1/2 md:-translate-x-1/2 items-center gap-5 md:gap-8 text-xs font-semibold tracking-wide text-gray-700 overflow-x-auto md:overflow-visible whitespace-nowrap w-full md:w-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link href="/" className="hover:text-blue-600 transition py-2 flex-shrink-0">Home</Link>
+              <Link href="/Products" className="hover:text-blue-600 transition py-2 flex-shrink-0">Products</Link>
+              <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2 flex-shrink-0">Categories</Link>
+              <Link href="/Contact" className="hover:text-blue-600 transition py-2 flex-shrink-0">Contact Us</Link>
             </div>
           </div>
         </div>
       </nav>
+
+      {/* ==================================================== */}
+      {/* 📱 MOBILE SLIDE-OUT MENU — previously missing entirely */}
+      {/* ==================================================== */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop — click to close */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeMobileMenu}
+          />
+
+          {/* Drawer panel */}
+          <div className="absolute top-0 right-0 h-full w-[82%] max-w-sm bg-white text-gray-800 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
+              <h2 className="font-extrabold text-lg tracking-tight text-gray-900">
+                Shop<span className="text-blue-600">Nest</span>
+              </h2>
+              <button
+                onClick={closeMobileMenu}
+                className="p-2 text-gray-500 hover:text-gray-800 cursor-pointer"
+                aria-label="Close menu"
+              >
+                <FaTimes className="text-lg" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <form onSubmit={handleSearchSubmit} className="p-4 border-b border-gray-100">
+              <div className="relative w-full flex items-center">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none focus:border-blue-500"
+                />
+                <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
+                  <FaSearch className="text-xs" />
+                </button>
+              </div>
+            </form>
+
+            {/* Account */}
+            <div className="p-4 border-b border-gray-100">
+              {isLoggedIn ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
+                      <FaUser />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="text-xs font-semibold text-red-600 flex items-center gap-1 cursor-pointer flex-shrink-0"
+                  >
+                    <FaSignOutAlt /> Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { closeMobileMenu(); setActiveModal("login"); }}
+                  className="w-full flex items-center justify-center gap-2 bg-[#10b981] text-white text-sm font-semibold py-2.5 rounded-xl cursor-pointer"
+                >
+                  <FaSignInAlt /> Sign in / Register
+                </button>
+              )}
+            </div>
+
+            {/* Quick links */}
+            <div className="p-4 border-b border-gray-100 grid grid-cols-2 gap-2">
+              <Link href="/wishlist" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
+                <FaHeart className="text-gray-400" /> Wishlist
+                {wishlistCount > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5">{wishlistCount}</span>}
+              </Link>
+              <Link href="/CartProduct" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
+                <FaShoppingCart className="text-gray-400" /> Cart
+                {cartCount > 0 && <span className="text-[10px] bg-blue-600 text-white rounded-full px-1.5">{cartCount}</span>}
+              </Link>
+              {isLoggedIn && (
+                <>
+                  <Link href="/Profile" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
+                    <FaUser className="text-gray-400" /> Profile
+                  </Link>
+                  <Link href="/Orders" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
+                    <FaBox className="text-gray-400" /> Orders
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Nav links */}
+            <div className="p-4 border-b border-gray-100 flex flex-col gap-1">
+              <Link href="/" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Home</Link>
+              <Link href="/Products" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Products</Link>
+              <Link href="/ExploreProducts" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Categories</Link>
+              <Link href="/Contact" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Contact Us</Link>
+            </div>
+
+            {/* Category accordion (mega-menu's mobile equivalent) */}
+            <div className="p-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Shop by Category</h3>
+              {loading ? (
+                <p className="text-xs text-gray-500">Loading...</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {categoriesData.map((mainCat) => (
+                    <li key={mainCat.id}>
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => { closeMobileMenu(); router.push(`/FashionCategory/${mainCat.id}`); }}
+                          className="flex-1 text-left py-2 text-sm font-semibold text-gray-700 cursor-pointer"
+                        >
+                          {mainCat.name}
+                        </button>
+                        {mainCat.children?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMobileOpenCategoryId(mobileOpenCategoryId === mainCat.id ? null : mainCat.id)
+                            }
+                            className="p-2 text-gray-400 cursor-pointer"
+                            aria-label="Toggle subcategories"
+                          >
+                            <FaChevronDown
+                              className={`text-xs transition-transform ${mobileOpenCategoryId === mainCat.id ? "rotate-180" : ""}`}
+                            />
+                          </button>
+                        )}
+                      </div>
+
+                      {mobileOpenCategoryId === mainCat.id && mainCat.children?.length > 0 && (
+                        <ul className="pl-3 border-l-2 border-gray-100 ml-1 mb-1">
+                          {mainCat.children.map((subCat) => (
+                            <li key={subCat.id}>
+                              <Link
+                                href={`/ExploreProducts/${mainCat.slug}/${subCat.slug}`}
+                                onClick={closeMobileMenu}
+                                className="block py-1.5 text-xs font-medium text-gray-600"
+                              >
+                                {subCat.name}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================== */}
       {/* 🌟 BLURRED BACKGROUND MODAL POPUP (LOGIN & REGISTER) */}
