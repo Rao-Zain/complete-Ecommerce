@@ -120,6 +120,18 @@ useEffect(() => {
     return () => window.removeEventListener("cartUpdated", updateCart);
   }, []);
 
+  // 🔥 Opens the login/register modal when another component (e.g. the
+  // product page) dispatches "open-auth-modal" — lets any page trigger
+  // this Navbar's modal without needing shared state.
+  useEffect(() => {
+    const handleOpenAuthModal = (e) => {
+      setActiveModal(e?.detail?.mode || "login");
+    };
+    window.addEventListener("open-auth-modal", handleOpenAuthModal);
+    return () => window.removeEventListener("open-auth-modal", handleOpenAuthModal);
+  }, []);
+
+
   const handleLogout = () => {
     localStorage.clear();
     setUser({ name: "Guest", email: "guest@example.com" });

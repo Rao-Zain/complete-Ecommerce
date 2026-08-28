@@ -113,7 +113,7 @@ const Hero = () => {
                   <h1 className="text-3xl lg:text-5xl font-bold">
                     {item.heading}
                   </h1>
-                  <p className="mt-4 text-base lg:text-xl">
+                  <p className="mt-4 text-base lg:max-w-4xl lg:text-xl">
                     {item.description}
                   </p>
                 </div>

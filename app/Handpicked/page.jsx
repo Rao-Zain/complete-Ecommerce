@@ -230,7 +230,7 @@ function Handpicked() {
                 >
                   <div className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
                     {/* Image & Badges Container */}
-                    <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full">
+                    <div className="relative bg-gray-100 lg:h-52 xs:h-36 sm:h-44 md:h-48 w-full">
                       {product.product_type === "featured" && (
                         <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-yellow-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
                           Featured

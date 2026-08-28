@@ -402,11 +402,11 @@ const ExploreProducts = () => {
 
                     {/* RIGHT SIDE PRODUCTS CONTAINER */}
                     <div className="container mx-auto">
-                        <div className="flex justify-between items-center bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                        <div className="flex justify-between items-center bg-white px-4 p-2 rounded-2xl shadow-sm border border-gray-100 mb-6">
                             <h2 className="font-bold text-gray-800">Products ({products.length})</h2>
 
                             {/* Custom styled sort dropdown (replaces native <select>) */}
-                            <div className="relative inline-block" ref={sortRef}>
+                            <div className="relative inline-block " ref={sortRef}>
                                 <button
                                     type="button"
                                     onClick={() => setSortOpen((o) => !o)}
@@ -451,7 +451,7 @@ const ExploreProducts = () => {
                                 <p className="text-gray-500 text-sm font-medium">No products found matching your filters.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-2">
                                 {products.map((product) => {
                                     const variant = product.main_variant || product.variants?.[0];
                                     const imagePath = product.main_variant_image?.image_path
@@ -474,11 +474,11 @@ const ExploreProducts = () => {
                                                     <FaHeart className="text-xs" />
                                                 </button>
 
-                                                <Link href={`/product/${product.slug}`}>
+                                                <Link href={`/Productdetail/${product.slug}`}>
                                                     <img
                                                         src={imagePath}
                                                         alt={product.name}
-                                                        className="w-full h-48 lg:h-48 object-cover group-hover:scale-105 transition duration-300"
+                                                        className="w-full h-48 lg:h-44 object-cover group-hover:scale-105 transition duration-300"
                                                     />
                                                 </Link>
                                             </div>

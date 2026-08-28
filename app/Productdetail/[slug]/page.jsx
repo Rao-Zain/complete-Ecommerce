@@ -308,13 +308,12 @@ export default function Productdetail() {
   // ADD TO CART
   // =========================================================
 
-  const handleAddToCart = async () => {
+ const handleAddToCart = async () => {
     const token = localStorage.getItem("token");
-
     const userId = getUserId();
 
     if (!token) {
-      toast.error("Please log in to add items to your cart.");
+      window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
       return;
     }
 
@@ -370,22 +369,27 @@ export default function Productdetail() {
   // =========================================================
 
   const handleBuyNow = () => {
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
-    if (!token) {
-      toast.error("Please log in to continue.");
-      return;
-    }
+  if (!token) {
+    window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
+    return;
+  }
 
-    if (!activeVariant) {
-      toast.error("Please select a color and size.");
-      return;
-    }
+  if (!userId || userId === "undefined" || userId === "null") {
+    toast.error("User information not found. Please log in again.");
+    return;
+  }
 
-    if (Number(activeVariant.stock) < quantity) {
-      toast.error("Not enough stock available.");
-      return;
-    }
+  if (!activeVariant) {
+    toast.error("Please select a color and size.");
+    return;
+  }
+
+  if (Number(activeVariant.stock) < quantity) {
+    toast.error("Not enough stock available.");
+    return;
+  }
 
     toast.success("Ready for checkout!");
   };
@@ -741,8 +745,8 @@ export default function Productdetail() {
 
             {/* DESCRIPTION */}
 
-            <div className="mt-5 sm:mt-6 border-t border-gray-100 pt-5">
-              <h2 className="text-sm sm:text-base font-semibold text-gray-800 mb-2">
+            <div className="mt-5 sm:mt-4">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-800">
                 Description
               </h2>
 

@@ -27,7 +27,7 @@ function timeAgo(dateString) {
 }
 
 export default function ProductReviews({ product }) {
-  const [modalIndex, setModalIndex] = useState(null); // null = closed, otherwise index into reviewsWithImages
+  const [modalIndex, setModalIndex] = useState(null); // index into allReviewImages
 
   if (!product) return null;
 
@@ -35,24 +35,24 @@ export default function ProductReviews({ product }) {
   const totalReviews = product.total_reviews ?? 0;
   const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
 
-  const mainImage =
-    product.images?.find((img) => img.is_main)?.image_path ||
-    product.images?.[0]?.image_path;
-
   const starCounts = [5, 4, 3, 2, 1].map((star) => {
     const count = reviews.filter((r) => r.rating === star).length;
     const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
     return { star: `${star} Star`, count, pct };
   });
 
-  // Every review currently renders the same product mainImage, so the
-  // swipeable modal lets you page through one slide per review that has an image.
-  const reviewsWithImages = mainImage
-    ? reviews.map((r) => ({ id: r.id, image: mainImage }))
-    : [];
+  // Flatten every approved review's own uploaded images (not the product image)
+  // into one list, so the swiper modal can page through all of them.
+  const allReviewImages = reviews.flatMap((r) =>
+    (r.images || []).map((img) => ({
+      key: img.id,
+      reviewId: r.id,
+      image: img.image_path,
+    }))
+  );
 
-  const openModal = (reviewId) => {
-    const idx = reviewsWithImages.findIndex((r) => r.id === reviewId);
+  const openModal = (imageId) => {
+    const idx = allReviewImages.findIndex((img) => img.key === imageId);
     if (idx !== -1) setModalIndex(idx);
   };
 
@@ -104,71 +104,77 @@ export default function ProductReviews({ product }) {
         )}
 
         <div className="flex flex-col gap-3">
-          {reviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                    {review.user?.name?.[0]?.toUpperCase() || "U"}
-                  </div>
+          {reviews.map((review) => {
+            const reviewImages = review.images || [];
 
-                  <div>
-                    <p className="text-xs font-medium text-gray-800">
-                      {review.user?.name || "Verified Customer"}
-                    </p>
-                    <div className="flex items-center">
-                      <span className="text-yellow-400 text-[10px]">
-                        {"★".repeat(review.rating)}
-                        {"☆".repeat(5 - review.rating)}
-                      </span>
-                      <span className="text-gray-400 text-[9px] ml-2">
-                        • {timeAgo(review.created_at)}
-                      </span>
+            return (
+              <div
+                key={review.id}
+                className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                      {review.user?.name?.[0]?.toUpperCase() || "U"}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {review.user?.name || "Verified Customer"}
+                      </p>
+                      <div className="flex items-center">
+                        <span className="text-yellow-400 text-[10px]">
+                          {"★".repeat(review.rating)}
+                          {"☆".repeat(5 - review.rating)}
+                        </span>
+                        <span className="text-gray-400 text-[9px] ml-2">
+                          • {timeAgo(review.created_at)}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {review.is_approved === 1 && (
+                    <span className="text-[8px] bg-green-50 text-green-600 border border-green-200 px-2 py-[2px] rounded-full font-medium">
+                      ● Verified
+                    </span>
+                  )}
                 </div>
 
-                {review.is_approved === 1 && (
-                  <span className="text-[8px] bg-green-50 text-green-600 border border-green-200 px-2 py-[2px] rounded-full font-medium">
-                    ● Verified
-                  </span>
+                <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+                  {review.comment}
+                </p>
+
+                {reviewImages.length > 0 && (
+                  <div className="mt-2 flex gap-2">
+                    {reviewImages.map((img) => (
+                      <button
+                        key={img.id}
+                        type="button"
+                        onClick={() => openModal(img.id)}
+                        className="relative w-[32px] h-[32px] rounded overflow-hidden border border-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500"
+                        aria-label="View review image"
+                      >
+                        <Image
+                          src={`${IMAGE_BASE_URL}/${img.image_path}`}
+                          alt="Customer uploaded review image"
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                {review.comment}
-              </p>
-
-              {mainImage && (
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => openModal(review.id)}
-                    className="relative w-[32px] h-[32px] rounded overflow-hidden border border-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500"
-                    aria-label="View review image"
-                  >
-                    <Image
-                      src={`${IMAGE_BASE_URL}/${mainImage}`}
-                      alt="Reviewed product"
-                      fill
-                      unoptimized
-                      className="object-cover"
-                    />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Fullscreen Image Modal */}
-      {modalIndex !== null && reviewsWithImages.length > 0 && (
+      {modalIndex !== null && allReviewImages.length > 0 && (
         <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center">
-          {/* Close button — the ONLY way to close this modal */}
           <button
             type="button"
             onClick={closeModal}
@@ -180,9 +186,6 @@ export default function ProductReviews({ product }) {
 
           <div
             className="w-full h-full max-w-4xl max-h-[85vh] px-4"
-            // Stop any click inside the viewer area from bubbling to a
-            // parent handler — belt-and-braces since there is no
-            // backdrop-close handler here to begin with.
             onClick={(e) => e.stopPropagation()}
           >
             <Swiper
@@ -192,9 +195,9 @@ export default function ProductReviews({ product }) {
               initialSlide={modalIndex}
               className="w-full h-full review-image-swiper"
             >
-              {reviewsWithImages.map((item, idx) => (
+              {allReviewImages.map((item, idx) => (
                 <SwiperSlide
-                  key={`${item.id}-${idx}`}
+                  key={`${item.key}-${idx}`}
                   className="flex items-center justify-center"
                 >
                   <div className="relative w-full h-full">
