@@ -59,6 +59,9 @@ const Navbar = () => {
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
 
+  // Field-level validation errors (from backend `errors` object)
+  const [regFieldErrors, setRegFieldErrors] = useState({});
+
   // Fetch Categories
   useEffect(() => {
     const fetchCategories = async () => {
@@ -162,28 +165,40 @@ useEffect(() => {
       const data = await res.json();
       console.log("Login Response Data:", data);
 
-      if (res.ok) {
-        const userToken = data.data.token || data.data.access_token || data.data.data?.token;
-        const userName = data.data.user?.name || data.data.name || data.data.data?.name || loginEmail.split("@")[0];
-        const userEmail = data.data.user?.email || data.data.email || data.data.data?.email || loginEmail;
-        const userId = data.data.user?.id;
-        console.log(data.data.user?.id);
-        if (!userToken) {
-          setLoginError("Login succeeded, but no token was returned by the server.");
-          return;
-        }
+     if (res.ok) {
+  const userToken = data.data.token || data.data.access_token || data.data.data?.token;
+  const userName = data.data.user?.name || data.data.name || data.data.data?.name || loginEmail.split("@")[0];
+  const userEmail = data.data.user?.email || data.data.email || data.data.data?.email || loginEmail;
+  const userId =
+    data.data.user?.id ??
+    data.data.id ??
+    data.data.data?.user?.id ??
+    data.data.data?.id;
 
-        localStorage.setItem("userId", userId);
-        localStorage.setItem("token", userToken);
-        localStorage.setItem("userName", userName);
-        localStorage.setItem("email", userEmail);
+  console.log("Extracted userId:", userId); // debug ke liye — confirm karega ke ab sahi value mil rahi hai
 
-        window.dispatchEvent(new Event("authUpdated"));
-        window.dispatchEvent(new Event("wishlistUpdated"));
-        setActiveModal(null);
-        setLoginEmail("");
-        setLoginPassword("");
-      } else {
+  if (!userToken) {
+    setLoginError("Login succeeded, but no token was returned by the server.");
+    return;
+  }
+
+  if (!userId) {
+    console.error("Login response shape:", data);
+    setLoginError("Login succeeded, but no user ID was returned by the server.");
+    return;
+  }
+
+  localStorage.setItem("userId", String(userId));
+  localStorage.setItem("token", userToken);
+  localStorage.setItem("userName", userName);
+  localStorage.setItem("email", userEmail);
+
+  window.dispatchEvent(new Event("authUpdated"));
+  window.dispatchEvent(new Event("wishlistUpdated"));
+  setActiveModal(null);
+  setLoginEmail("");
+  setLoginPassword("");
+} else {
         const errorMessage = data.message || data.error || "Invalid email or password (401 Unauthorized)";
         setLoginError(errorMessage);
       }
@@ -198,13 +213,15 @@ useEffect(() => {
   // Handle Register API
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+    setRegFieldErrors({});
+    setRegError("");
+
     if (regPassword !== regConfirmPassword) {
-      setRegError("Passwords do not match");
+      setRegFieldErrors({ password_confirmation: "Passwords do not match" });
       return;
     }
 
     setRegLoading(true);
-    setRegError("");
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/register`, {
@@ -241,10 +258,20 @@ useEffect(() => {
         setRegEmail("");
         setRegPassword("");
         setRegConfirmPassword("");
+        setRegFieldErrors({});
       } else {
-        const errorMessage = data.message ||
-          (data.errors ? Object.values(data.errors)[0][0] : "Registration failed.");
-        setRegError(errorMessage);
+        // Backend "errors" object ko field-wise map karein (e.g. { email: ["The email has already been taken."] })
+        if (data.errors && typeof data.errors === "object") {
+          const mappedErrors = {};
+          Object.keys(data.errors).forEach((field) => {
+            const fieldMessages = data.errors[field];
+            mappedErrors[field] = Array.isArray(fieldMessages) ? fieldMessages[0] : fieldMessages;
+          });
+          setRegFieldErrors(mappedErrors);
+        } else {
+          // Koi field-specific error na ho to hi general banner dikhayein
+          setRegError(data.message || "Registration failed.");
+        }
       }
     } catch (err) {
       setRegError("Something went wrong. Please try again.");
@@ -577,6 +604,7 @@ useEffect(() => {
                 <p className="text-xs text-gray-500 mt-1">Please fill in the details below to create your new account.</p>
               </div>
 
+              {/* General (non-field) error — sirf tab dikhega jab koi field-specific error na ho */}
               {regError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center font-medium">
                   {regError}
@@ -592,8 +620,15 @@ useEffect(() => {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
+                      regFieldErrors.name
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                    }`}
                   />
+                  {regFieldErrors.name && (
+                    <p className="text-red-500 text-xs mt-1">{regFieldErrors.name}</p>
+                  )}
                 </div>
 
                 <div>
@@ -604,8 +639,15 @@ useEffect(() => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
+                      regFieldErrors.email
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                    }`}
                   />
+                  {regFieldErrors.email && (
+                    <p className="text-red-500 text-xs mt-1">{regFieldErrors.email}</p>
+                  )}
                 </div>
 
                 <div>
@@ -616,8 +658,15 @@ useEffect(() => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
+                      regFieldErrors.password
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                    }`}
                   />
+                  {regFieldErrors.password && (
+                    <p className="text-red-500 text-xs mt-1">{regFieldErrors.password}</p>
+                  )}
                 </div>
 
                 <div>
@@ -628,8 +677,15 @@ useEffect(() => {
                     value={regConfirmPassword}
                     onChange={(e) => setRegConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
+                      regFieldErrors.password_confirmation
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                    }`}
                   />
+                  {regFieldErrors.password_confirmation && (
+                    <p className="text-red-500 text-xs mt-1">{regFieldErrors.password_confirmation}</p>
+                  )}
                 </div>
 
                 <button
@@ -646,7 +702,7 @@ useEffect(() => {
                 <p className="text-xs text-gray-500">
                   Already have an account?{" "}
                   <button
-                    onClick={() => { setRegError(""); setActiveModal("login"); }}
+                    onClick={() => { setRegError(""); setRegFieldErrors({}); setActiveModal("login"); }}
                     className="text-[#10b981] font-semibold hover:underline ml-1 cursor-pointer"
                   >
                     Login here

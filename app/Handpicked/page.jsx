@@ -63,14 +63,89 @@ function Handpicked() {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
-  // Wishlist state
+  // Wishlist state — synced with localStorage "wishlist" key (same key Navbar/Wishlist use)
   const [wishlistIds, setWishlistIds] = useState([]);
 
-  // Safely read + trim auth token from localStorage
+  // Safely read + clean auth token from localStorage
   const getAuthToken = () => {
     if (typeof window === "undefined") return null;
-    const rawToken = localStorage.getItem("token");
-    return rawToken ? rawToken.trim() : null;
+    let rawToken = localStorage.getItem("token");
+    if (!rawToken) return null;
+    rawToken = rawToken.trim();
+    if (rawToken.startsWith('"') && rawToken.endsWith('"')) {
+      rawToken = rawToken.slice(1, -1);
+    }
+    return rawToken;
+  };
+
+  // Load current wishlist ids on mount + keep in sync if changed elsewhere
+  useEffect(() => {
+    const loadWishlist = () => {
+      const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
+      setWishlistIds(stored);
+    };
+    loadWishlist();
+    window.addEventListener("wishlistUpdated", loadWishlist);
+    window.addEventListener("storage", loadWishlist);
+    return () => {
+      window.removeEventListener("wishlistUpdated", loadWishlist);
+      window.removeEventListener("storage", loadWishlist);
+    };
+  }, []);
+
+  const toggleWishlist = async (e, productId) => {
+    e.preventDefault();   // parent <Link> ko product detail page pe navigate hone se roke
+    e.stopPropagation();  // click event upar Link tak bubble na ho
+
+    const userId = localStorage.getItem("userId");
+    const token = getAuthToken();
+
+    if (!userId || !token) {
+      alert("Wishlist mein add karne ke liye pehle login karein");
+      return;
+    }
+
+    const numericUserId = Number(userId);
+    const numericProductId = Number(productId);
+
+    const isWishlisted = wishlistIds.includes(numericProductId);
+    const updated = isWishlisted
+      ? wishlistIds.filter((id) => id !== numericProductId)
+      : [...wishlistIds, numericProductId];
+
+    // 1. UI + localStorage turant update (heart fill + navbar counter dono automatically sync ho jate hain is event se)
+    setWishlistIds(updated);
+    localStorage.setItem("wishlist", JSON.stringify(updated));
+    window.dispatchEvent(new Event("wishlistUpdated"));
+
+    // 2. Backend ko toggle bhejo — Authorization header zaroori hai warna 401 aata hai
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: numericUserId,
+          product_id: numericProductId,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error("Wishlist API error:", res.status, resData);
+        throw new Error(resData.message || `Wishlist update failed (${res.status})`);
+      }
+    } catch (err) {
+      console.error("Wishlist toggle error:", err);
+      // Rollback on failure
+      setWishlistIds(wishlistIds);
+      localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
+      window.dispatchEvent(new Event("wishlistUpdated"));
+    }
   };
 
   // Fetching Products Callback
