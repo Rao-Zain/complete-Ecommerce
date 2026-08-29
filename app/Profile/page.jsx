@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Camera, Check, ShieldCheck, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { API_BASE_URL } from '@/lib/config';
+import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const Profile = () => {
   // --- Profile Info States ---
@@ -12,12 +12,19 @@ const Profile = () => {
   const [phone, setPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [profilePic, setProfilePic] = useState('');
+  const [profilePicPreview, setProfilePicPreview] = useState('');
   const [loading, setLoading] = useState(true);
+  const [profilePicFile, setProfilePicFile] = useState(null);
 
   // --- Password States ---
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // --- Password Field Error States ---
+  const [currentPasswordError, setCurrentPasswordError] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   // Helper function to get headers with Bearer Token
   const getAuthHeaders = () => {
@@ -25,14 +32,22 @@ const Profile = () => {
   
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
   };
-  
 
   // Helper to get logged-in user ID securely from localStorage
   const getUserId = () => {
     return localStorage.getItem('userId');
+  };
+
+  const resolveImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
+      return path;
+    }
+    return `${IMAGE_BASE_URL}/${path}`;
   };
 
   // Fetch profile data on mount using logged-in user ID
@@ -48,7 +63,7 @@ const Profile = () => {
           return;
         }
 
-        const response_api = await fetch(`http://192.168.1.14:8000/api/profile/${userId}`, {
+        const response_api = await fetch(`${API_BASE_URL}/api/profile/${userId}`, {
           method: 'GET',
           headers: getAuthHeaders(),
         });
@@ -58,7 +73,6 @@ const Profile = () => {
         }
         const response = await response_api.json();
 
-        // Setting state with the fetched data
         setName(response.data.name || '');
         setEmail(response.data.email || '');
         setPhone(response.data.phone || '');
@@ -75,81 +89,145 @@ const Profile = () => {
     fetchProfileData();
   }, []);
 
-  // --- Profile Submit Handler (PUT Request) ---
+  // --- Profile Submit Handler ---
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     try {
       const userId = getUserId();
+      const token = localStorage.getItem('token');
+
       if (!userId) {
         toast.error('User ID not found. Please login again.');
         return;
       }
 
-      const response = await fetch(`http://192.168.1.6:8008/api/profile/${userId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          shippingAddress,
-          profilePic,
-        }),
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('shippingAddress', shippingAddress);
+
+      if (profilePicFile) {
+        formData.append('profilePic', profilePicFile);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/profile/update/${userId}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
       });
 
+      const resData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        throw new Error(resData.message || 'Failed to update profile');
       }
+
+      const updatedPic = 
+        resData.data?.profilePic || 
+        resData.profilePic || 
+        resData.user?.profilePic;
+
+      if (updatedPic) {
+        setProfilePic(updatedPic);
+      }
+
+      setProfilePicPreview('');
+      setProfilePicFile(null);
 
       toast.success('Profile information updated successfully!');
     } catch (error) {
       console.error(error);
-      toast.error('Error updating profile!');
+      toast.error(error.message || 'Error updating profile!');
     }
   };
 
   // --- Password Submit Handler ---
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
+
+    // Reset previous inline errors
+    setCurrentPasswordError('');
+    setNewPasswordError('');
+    setConfirmPasswordError('');
+
+    const userId = getUserId();
+    if (!userId) {
+      toast.error('User ID not found. Please login again.');
+      return;
+    }
+
+    // Client-side validation: Check if new passwords match
     if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match!');
+      setNewPasswordError('New passwords do not match');
+      setConfirmPasswordError('New passwords do not match');
       return;
     }
 
     try {
-      const response = await fetch(`http://192.168.1.14:8000/api/profile/update-password`, {
-        method: 'PUT',
+      const response = await fetch(`${API_BASE_URL}/api/profile/update-password/${userId}`, {
+        method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          currentPassword,
-          newPassword,
+          current_password: currentPassword,
+          password: newPassword,
+          password_confirmation: confirmPassword,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update password');
+      if (response.redirected) {
+        throw new Error('Session expired. Please login again.');
       }
 
-      toast.success('Password updated successfully!');
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response.');
+      }
+
+      const resData = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        // Handle Laravel validation errors (e.g. current_password mismatch)
+        if (resData.errors) {
+          if (resData.errors.current_password) {
+            setCurrentPasswordError(resData.errors.current_password[0]);
+          }
+          if (resData.errors.password) {
+            setNewPasswordError(resData.errors.password[0]);
+          }
+          if (resData.errors.password_confirmation) {
+            setConfirmPasswordError(resData.errors.password_confirmation[0]);
+          }
+          return;
+        }
+        throw new Error(resData.message || 'Failed to update password');
+      }
+
+      toast.success(resData.message || 'Password updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
       console.error(error);
-      toast.error('Error updating password!');
+      toast.error(error.message || 'Error updating password!');
     }
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setProfilePic(imageUrl);
-      toast.success('Profile picture updated!');
+      setProfilePicFile(file);
+      setProfilePicPreview(URL.createObjectURL(file));
+      toast.success('Profile picture selected!');
     }
   };
 
   const handleRemoveImage = () => {
+    setProfilePicFile(null);
+    setProfilePicPreview('');
     setProfilePic('');
     toast.success('Profile picture removed!');
   };
@@ -161,6 +239,8 @@ const Profile = () => {
       </div>
     );
   }
+
+  const displayImage = profilePicPreview || resolveImageUrl(profilePic);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -190,11 +270,14 @@ const Profile = () => {
             <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="flex items-center space-x-6">
                 <div className="relative">
-                  {profilePic ? (
+                  {displayImage ? (
                     <img
-                      src={profilePic}
+                      src={displayImage}
                       alt="Profile"
                       className="w-20 h-20 rounded-2xl object-cover border-2 border-gray-200 shadow-sm"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <div className="w-20 h-20 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 shadow-sm">
@@ -212,7 +295,7 @@ const Profile = () => {
                     />
                   </label>
 
-                  {profilePic && (
+                  {displayImage && (
                     <button
                       type="button"
                       onClick={handleRemoveImage}
@@ -306,10 +389,18 @@ const Profile = () => {
                   type="password"
                   placeholder="••••••••"
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (currentPasswordError) setCurrentPasswordError('');
+                  }}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-800 focus:bg-white focus:border-gray-800 focus:ring-1 focus:ring-gray-800 outline-none transition-all text-sm"
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    currentPasswordError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'
+                  } text-gray-800 focus:bg-white outline-none transition-all text-sm`}
                 />
+                {currentPasswordError && (
+                  <p className="text-xs text-red-500 mt-1">{currentPasswordError}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -318,10 +409,18 @@ const Profile = () => {
                   type="password"
                   placeholder="••••••••"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (newPasswordError) setNewPasswordError('');
+                  }}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-800 focus:bg-white focus:border-gray-800 focus:ring-1 focus:ring-gray-800 outline-none transition-all text-sm"
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    newPasswordError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'
+                  } text-gray-800 focus:bg-white outline-none transition-all text-sm`}
                 />
+                {newPasswordError && (
+                  <p className="text-xs text-red-500 mt-1">{newPasswordError}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -330,10 +429,18 @@ const Profile = () => {
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (confirmPasswordError) setConfirmPasswordError('');
+                  }}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-800 focus:bg-white focus:border-gray-800 focus:ring-1 focus:ring-gray-800 outline-none transition-all text-sm"
+                  className={`w-full px-4 py-3 rounded-xl border ${
+                    confirmPasswordError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-gray-50/50'
+                  } text-gray-800 focus:bg-white outline-none transition-all text-sm`}
                 />
+                {confirmPasswordError && (
+                  <p className="text-xs text-red-500 mt-1">{confirmPasswordError}</p>
+                )}
               </div>
 
               <div className="pt-4">

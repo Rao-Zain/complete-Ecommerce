@@ -2,14 +2,33 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import Link from "next/link";
 import { Flame } from "lucide-react";
 
 function Bestselling() {
+  const router = useRouter();
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Wishlist state — synced with localStorage "wishlist" key (same key Navbar/Wishlist use)
+  const [wishlistIds, setWishlistIds] = useState([]);
+
+  // Safely read + clean auth token from localStorage (handles trim + accidental quotes)
+  const getAuthToken = () => {
+    if (typeof window === "undefined") return null;
+    let rawToken = localStorage.getItem("token");
+    if (!rawToken) return null;
+    rawToken = rawToken.trim();
+    // agar kabhi JSON.stringify ho kar quotes ke sath save ho gaya ho to hatayein
+    if (rawToken.startsWith('"') && rawToken.endsWith('"')) {
+      rawToken = rawToken.slice(1, -1);
+    }
+    return rawToken;
+  };
 
   useEffect(() => {
     const fetchBestProducts = async () => {
@@ -28,6 +47,79 @@ function Bestselling() {
 
     fetchBestProducts();
   }, []);
+
+  // Load current wishlist ids on mount + keep in sync if changed elsewhere
+  useEffect(() => {
+    const loadWishlist = () => {
+      const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
+      setWishlistIds(stored);
+    };
+    loadWishlist();
+    window.addEventListener("wishlistUpdated", loadWishlist);
+    window.addEventListener("storage", loadWishlist);
+    return () => {
+      window.removeEventListener("wishlistUpdated", loadWishlist);
+      window.removeEventListener("storage", loadWishlist);
+    };
+  }, []);
+
+  const toggleWishlist = async (e, productId) => {
+    e.preventDefault();   // parent <Link> ko product detail page pe navigate hone se roke
+    e.stopPropagation();  // click event upar Link tak bubble na ho
+
+    const userId = localStorage.getItem("userId");
+    const token = getAuthToken();
+
+    if (!userId || !token) {
+      alert("Wishlist mein add karne ke liye pehle login karein");
+      return;
+    }
+
+    const numericUserId = Number(userId);
+    const numericProductId = Number(productId);
+
+    const isWishlisted = wishlistIds.includes(numericProductId);
+    const updated = isWishlisted
+      ? wishlistIds.filter((id) => id !== numericProductId)
+      : [...wishlistIds, numericProductId];
+
+    // 1. UI + localStorage turant update (heart fill + navbar counter dono automatically sync ho jate hain is event se)
+    setWishlistIds(updated);
+    localStorage.setItem("wishlist", JSON.stringify(updated));
+    window.dispatchEvent(new Event("wishlistUpdated"));
+
+    // 2. Backend ko toggle bhejo — Authorization header zaroori hai warna 401 aata hai
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: numericUserId,
+          product_id: numericProductId,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error("Wishlist API error:", res.status, resData);
+        throw new Error(resData.message || `Wishlist update failed (${res.status})`);
+      }
+
+      // 3. Sirf ADD hone par wishlist page pe redirect karein
+      
+    } catch (err) {
+      console.error("Wishlist toggle error:", err);
+      // Rollback on failure
+      setWishlistIds(wishlistIds);
+      localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
+      window.dispatchEvent(new Event("wishlistUpdated"));
+    }
+  };
 
   return (
     <main className="w-full mx-auto px-3 sm:px-6 md:px-7 sm:pt-4 mb-2 sm:mb-4 lg:mb-2 flex justify-between items-center">
@@ -142,6 +234,7 @@ function Bestselling() {
                   : 0;
 
               const imagePath = product.main_variant_image?.image_path;
+              const isWishlisted = wishlistIds.includes(product.id);
 
               return (
                 <Link
@@ -161,8 +254,18 @@ function Bestselling() {
                         </span>
                       )}
 
-                      <button className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white p-1 sm:p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10">
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <button
+                        onClick={(e) => toggleWishlist(e, product.id)}
+                        className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
+                        title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                      >
+                        <svg
+                          className={`w-4 h-4 ${isWishlisted
+                              ? "fill-red-500 stroke-red-500"
+                              : "fill-none stroke-current"
+                            }`}
+                          viewBox="0 0 24 24"
+                        >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -170,6 +273,7 @@ function Bestselling() {
                             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                           />
                         </svg>
+
                       </button>
 
                       {imagePath && (
@@ -182,6 +286,8 @@ function Bestselling() {
                           className="object-cover object-center"
                         />
                       )}
+
+
                     </div>
 
                     {/* Product Info */}
