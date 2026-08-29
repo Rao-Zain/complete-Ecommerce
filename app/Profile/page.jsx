@@ -10,7 +10,7 @@ const Profile = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [shippingAddress, setShippingAddress] = useState('');
+  const [shipping_address, setShipping_address] = useState('');
   const [profilePic, setProfilePic] = useState('');
   const [profilePicPreview, setProfilePicPreview] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ const Profile = () => {
         setName(response.data.name || '');
         setEmail(response.data.email || '');
         setPhone(response.data.phone || '');
-        setShippingAddress(response.data.shippingAddress || '');
+        setShipping_address(response.data.shipping_address || '');
         setProfilePic(response.data.profilePic || '');
       } catch (error) {
         console.error(error);
@@ -105,7 +105,7 @@ const Profile = () => {
       formData.append('name', name);
       formData.append('email', email);
       formData.append('phone', phone);
-      formData.append('shippingAddress', shippingAddress);
+      formData.append('shipping_address', shipping_address);
 
       if (profilePicFile) {
         formData.append('profilePic', profilePicFile);
@@ -350,8 +350,8 @@ const Profile = () => {
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Shipping Address</label>
                   <textarea
                     rows="3"
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
+                    value={shipping_address}
+                    onChange={(e) => setShipping_address(e.target.value)}
                     required
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-800 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-none transition-all text-sm resize-none"
                   />

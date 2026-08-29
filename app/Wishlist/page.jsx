@@ -220,7 +220,7 @@ const Wishlist = () => {
                       e.stopPropagation();
                       router.push(`/Productdetail/${product?.slug}`);
                     }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-lg transition"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 cursor-pointer rounded-lg transition"
                     title="View Details"
                   >
                     <Eye size={16} />
@@ -231,7 +231,7 @@ const Wishlist = () => {
                       e.stopPropagation();
                       removeItem(item);
                     }}
-                    className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-lg transition"
+                    className="bg-red-500 hover:bg-red-600 text-white p-2.5  cursor-pointer rounded-lg transition"
                     title="Remove Item"
                   >
                     <Trash2 size={16} />
