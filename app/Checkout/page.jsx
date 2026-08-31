@@ -1456,7 +1456,7 @@ export default function CheckoutPage() {
                   orderLoading ||
                   cartItems.length === 0
                 }
-                className="w-full mt-5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3.5 rounded-xl font-bold text-sm transition"
+                className="w-full mt-5 bg-green-600 hover:bg-green-700 cursor-pointer disabled:bg-gray-400 text-white py-3.5 rounded-xl font-bold text-sm transition"
               >
 
                 {orderLoading

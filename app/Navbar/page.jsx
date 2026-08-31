@@ -279,12 +279,26 @@ useEffect(() => {
       });
 
       const data = await res.json();
+      console.log("Register Response Data:", data);
 
       if (res.ok) {
-        const userToken = data.token || data.access_token || data.data?.token;
-        const userName = data.user?.name || data.name || data.data?.name || regName;
-        const userEmail = data.user?.email || data.email || data.data?.email || regEmail;
-        const userId = data.user?.id || data.id || data.data?.id;
+        // FIX: the register endpoint wraps its payload the same way login
+        // does — { data: { token, user: { id, name, email } } } — but this
+        // was previously reading top-level `data.user`/`data.id` (which
+        // don't exist), so `userId` resolved to `undefined` and got saved
+        // to localStorage as the literal string "undefined". That string
+        // then failed the `userId !== "undefined"` check in Add to Cart,
+        // producing "User information not found. Please log in again."
+        // even though the account had just been created successfully.
+        const userToken = data.data?.token || data.data?.access_token || data.token || data.access_token;
+        const userName = data.data?.user?.name || data.data?.name || data.user?.name || data.name || regName;
+        const userEmail = data.data?.user?.email || data.data?.email || data.user?.email || data.email || regEmail;
+        const userId = data.data?.user?.id || data.user?.id || data.id;
+
+        if (!userToken || !userId) {
+          setRegError("Account created, but no valid session was returned by the server.");
+          return;
+        }
 
         localStorage.setItem("token", userToken);
         localStorage.setItem("userName", userName);

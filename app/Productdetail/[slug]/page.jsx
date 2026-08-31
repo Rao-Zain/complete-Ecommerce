@@ -725,7 +725,7 @@ const handleBuyNow = async () => {
             lg:col-span-7">
             {/* PRODUCT NAME */}
 
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold leading-tight text-gray-900 break-words">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 capitalize">
               {product.name}
             </h1>
 
