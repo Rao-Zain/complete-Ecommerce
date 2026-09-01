@@ -777,7 +777,7 @@ useEffect(() => {
 
           {/* LOGIN MODAL */}
           {activeModal === "login" && (
-            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
+            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-5 relative animate-in zoom-in-95 duration-200">
 
               <button
                 onClick={() => setActiveModal(null)}
@@ -848,7 +848,7 @@ useEffect(() => {
 
           {/* REGISTER MODAL */}
           {activeModal === "register" && (
-            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
+            <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-5 relative animate-in zoom-in-95 duration-200">
 
               <button
                 onClick={() => setActiveModal(null)}

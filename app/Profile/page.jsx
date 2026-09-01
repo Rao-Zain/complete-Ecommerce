@@ -15,6 +15,16 @@ const Profile = () => {
   const [profilePicPreview, setProfilePicPreview] = useState('');
   const [loading, setLoading] = useState(true);
   const [profilePicFile, setProfilePicFile] = useState(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false); // controls Save button disabled state
+
+  // --- Baseline snapshot of what's currently saved on the server ---
+  const [originalProfile, setOriginalProfile] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    shipping_address: '',
+    profilePic: '',
+  });
 
   // --- Password States ---
   const [currentPassword, setCurrentPassword] = useState('');
@@ -73,11 +83,26 @@ const Profile = () => {
         }
         const response = await response_api.json();
 
-        setName(response.data.name || '');
-        setEmail(response.data.email || '');
-        setPhone(response.data.phone || '');
-        setShipping_address(response.data.shipping_address || '');
-        setProfilePic(response.data.profilePic || '');
+        const fetchedName = response.data.name || '';
+        const fetchedEmail = response.data.email || '';
+        const fetchedPhone = response.data.phone || '';
+        const fetchedShippingAddress = response.data.shipping_address || '';
+        const fetchedProfilePic = response.data.profilePic || '';
+
+        setName(fetchedName);
+        setEmail(fetchedEmail);
+        setPhone(fetchedPhone);
+        setShipping_address(fetchedShippingAddress);
+        setProfilePic(fetchedProfilePic);
+
+        // Snapshot the baseline so we can detect real changes later
+        setOriginalProfile({
+          name: fetchedName,
+          email: fetchedEmail,
+          phone: fetchedPhone,
+          shipping_address: fetchedShippingAddress,
+          profilePic: fetchedProfilePic,
+        });
       } catch (error) {
         console.error(error);
         toast.error('Failed to load profile data from server');
@@ -92,6 +117,7 @@ const Profile = () => {
   // --- Profile Submit Handler ---
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    setIsSavingProfile(true); // disable button as soon as submit starts
     try {
       const userId = getUserId();
       const token = localStorage.getItem('token');
@@ -131,6 +157,8 @@ const Profile = () => {
         resData.profilePic || 
         resData.user?.profilePic;
 
+      const finalProfilePic = updatedPic || profilePic;
+
       if (updatedPic) {
         setProfilePic(updatedPic);
       }
@@ -138,10 +166,21 @@ const Profile = () => {
       setProfilePicPreview('');
       setProfilePicFile(null);
 
+      // Reset baseline to the just-saved values so the button disables again
+      setOriginalProfile({
+        name,
+        email,
+        phone,
+        shipping_address,
+        profilePic: finalProfilePic,
+      });
+
       toast.success('Profile information updated successfully!');
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Error updating profile!');
+    } finally {
+      setIsSavingProfile(false); // re-enable button whether success or failure
     }
   };
 
@@ -241,6 +280,17 @@ const Profile = () => {
   }
 
   const displayImage = profilePicPreview || resolveImageUrl(profilePic);
+
+  // True only when something actually differs from the last saved state
+  const hasChanges =
+    name !== originalProfile.name ||
+    email !== originalProfile.email ||
+    phone !== originalProfile.phone ||
+    shipping_address !== originalProfile.shipping_address ||
+    profilePic !== originalProfile.profilePic || // covers image removal
+    profilePicFile !== null;                     // covers a newly picked image not yet saved
+
+  const isSaveDisabled = isSavingProfile || !hasChanges;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -361,10 +411,13 @@ const Profile = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="bg-[#009e52] hover:bg-[#008644] text-white font-medium px-6 py-3 rounded-xl shadow-sm transition-all flex items-center space-x-2 text-sm cursor-pointer"
+                  disabled={isSaveDisabled}
+                  className={`bg-[#009e52] hover:bg-[#008644] text-white font-medium px-6 py-3 rounded-xl shadow-sm transition-all flex items-center space-x-2 text-sm cursor-pointer ${
+                    isSaveDisabled ? 'opacity-60 cursor-not-allowed hover:bg-[#009e52]' : ''
+                  }`}
                 >
                   <Check size={16} />
-                  <span>Save Information</span>
+                  <span>{isSavingProfile ? 'Saving...' : 'Save Information'}</span>
                 </button>
               </div>
             </form>
