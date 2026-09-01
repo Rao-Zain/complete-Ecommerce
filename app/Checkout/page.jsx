@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import {
   FaUser,
   FaEnvelope,
@@ -51,7 +52,7 @@ export default function CheckoutPage() {
   // -----------------------------
   // ORDER SUCCESS
   // -----------------------------
-  const [orderNumber, setOrderNumber] = useState("");
+  // const [orderNumber, setOrderNumber] = useState("");
 
   // -----------------------------
   // FORM
@@ -117,66 +118,54 @@ export default function CheckoutPage() {
   // ============================================================
   // LOAD CART
   // ============================================================
-// ============================================================
-// LOAD CART — now fetches the live server cart (source of truth)
-// when logged in, matching CartPage.jsx, instead of trusting
-// whatever happens to be cached in localStorage at mount time.
-// Falls back to localStorage for guests or if the fetch fails.
-// ============================================================
-useEffect(() => {
-  const loadCart = async () => {
-    const token = localStorage.getItem("token") || "";
-    const userId = localStorage.getItem("userId");
+  // ============================================================
+  // LOAD CART — now fetches the live server cart (source of truth)
+  // when logged in, matching CartPage.jsx, instead of trusting
+  // whatever happens to be cached in localStorage at mount time.
+  // Falls back to localStorage for guests or if the fetch fails.
+  // ============================================================
 
-    if (token && userId && userId !== "undefined" && userId !== "null") {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  useEffect(() => {
+    const loadCart = async () => {
+      const token = localStorage.getItem("token") || "";
+      const userId = localStorage.getItem("userId");
 
-        if (response.ok) {
-          const data = await response.json();
-          const items = Array.isArray(data) ? data : data.data || [];
+      if (token && userId && userId !== "undefined" && userId !== "null") {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-          if (items.length > 0) {
+          if (response.ok) {
+            const data = await response.json();
+            const items = Array.isArray(data) ? data : data.data || [];
             setCartItems(items);
             localStorage.setItem("cart", JSON.stringify(items));
             return;
           }
-          // Server says cart is genuinely empty — fall through to check
-          // localStorage in case a Buy Now item is waiting there instead.
+        } catch (error) {
+          console.error("Checkout cart fetch error:", error);
         }
-      } catch (error) {
-        console.error("Checkout cart fetch error:", error);
-        // fall through to localStorage fallback below
       }
-    }
 
-    // Guest, no token, or server fetch came back empty/failed —
-    // use whatever's cached locally (this is what makes "Buy Now" work,
-    // since that flow writes directly to localStorage, not the server).
-    try {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) {
-        const parsed = JSON.parse(savedCart);
+      // Guest / no token / server fetch failed — fall back to localStorage
+      try {
+        const savedCart = localStorage.getItem("cart");
+        const parsed = savedCart ? JSON.parse(savedCart) : [];
         setCartItems(Array.isArray(parsed) ? parsed : [parsed]);
-      } else {
+      } catch (error) {
+        console.error("Cart loading error:", error);
         setCartItems([]);
       }
-    } catch (error) {
-      console.error("Cart loading error:", error);
-      setCartItems([]);
-    }
-  };
+    };
 
-  loadCart();
-}, []);
-
+    loadCart();
+  }, []);
   // ============================================================
   // CHECKOUT API
   // GET /api/checkout
@@ -369,17 +358,17 @@ useEffect(() => {
   const getPrice = (item) => {
     return Number(
       item?.variant?.price ??
-        item?.price ??
-        item?.sale_price ??
-        0
+      item?.price ??
+      item?.sale_price ??
+      0
     );
   };
 
   const getQuantity = (item) => {
     return Number(
       item?.quantity ??
-        item?.qty ??
-        1
+      item?.qty ??
+      1
     );
   };
 
@@ -423,7 +412,7 @@ useEffect(() => {
     (total, item) =>
       total +
       getPrice(item) *
-        getQuantity(item),
+      getQuantity(item),
     0
   );
 
@@ -472,35 +461,35 @@ useEffect(() => {
   // PLACE ORDER
   // POST /api/place-order
   // ============================================================
- const handlePlaceOrder = async () => {
-  if (!validateForm()) {
-    return;
-  }
+  const handlePlaceOrder = async () => {
+    if (!validateForm()) {
+      return;
+    }
 
-  if (cartItems.length === 0) {
-   
-     toast.error("Your cart is empty.");
-          return;
-  }
+    if (cartItems.length === 0) {
 
-  try {
-    setOrderLoading(true);
+      toast.error("Your cart is empty.");
+      return;
+    }
 
-    const token = localStorage.getItem("token") || "";
+    try {
+      setOrderLoading(true);
 
-    // Fixed: your app stores this as a plain "userId" key
-    // (see Navbar login/register), never as a "user" object.
-    const storedUserId = localStorage.getItem("userId");
-    const userId =
-      storedUserId && storedUserId !== "undefined" && storedUserId !== "null"
-        ? storedUserId
-        : null;
+      const token = localStorage.getItem("token") || "";
 
-    const fullName = `${form.firstName} ${form.lastName}`.trim();
+      // Fixed: your app stores this as a plain "userId" key
+      // (see Navbar login/register), never as a "user" object.
+      const storedUserId = localStorage.getItem("userId");
+      const userId =
+        storedUserId && storedUserId !== "undefined" && storedUserId !== "null"
+          ? storedUserId
+          : null;
 
-    const payload = {
-      user_id: userId,
-      userId: userId,
+      const fullName = `${form.firstName} ${form.lastName}`.trim();
+
+      const payload = {
+        user_id: userId,
+        userId: userId,
 
         name: fullName,
 
@@ -646,17 +635,12 @@ useEffect(() => {
           result?.data?.order_number ||
           "ORD-SUCCESS";
 
-        setOrderNumber(
-          receivedOrderNumber
-        );
+        localStorage.removeItem("cart");
+        window.dispatchEvent(new Event("cartUpdated"));
 
-        localStorage.removeItem(
-          "cart"
-        );
+        router.push(`/OrderSuccess?order=${encodeURIComponent(receivedOrderNumber)}`);
 
-        window.dispatchEvent(
-          new Event("cartUpdated")
-        );
+
       } else {
         if (result?.errors) {
           const firstKey =
@@ -665,12 +649,12 @@ useEffect(() => {
             )[0];
 
           toast.error(
-          result.errors[firstKey]?.[0] || "Validation error"
-        );
+            result.errors[firstKey]?.[0] || "Validation error"
+          );
         } else {
           toast.error(
-          result?.message || "Order place nahi ho saka."
-        );
+            result?.message || "Order place nahi ho saka."
+          );
         }
       }
     } catch (error) {
@@ -679,56 +663,14 @@ useEffect(() => {
         error
       );
 
-      
-       toast.error("Network error! Server check karein.");
-            return;
+
+      toast.error("Network error! Server check karein.");
+      return;
     } finally {
       setOrderLoading(false);
     }
   };
 
-  // ============================================================
-  // SUCCESS SCREEN
-  // ============================================================
-  if (orderNumber) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-
-          <div className="w-16 h-16 mx-auto rounded-full bg-green-100 text-green-600 flex items-center justify-center text-3xl mb-5">
-            <FaCheckCircle />
-          </div>
-
-          <h1 className="text-2xl font-bold text-gray-800">
-            Thank You!
-          </h1>
-
-          <p className="text-sm text-gray-500 mt-2">
-            Your order has been placed successfully.
-          </p>
-
-          <div className="bg-gray-50 border rounded-xl p-4 mt-5">
-            <p className="text-xs text-gray-500">
-              Order Number
-            </p>
-
-            <p className="text-xl font-bold text-green-600 mt-1">
-              {orderNumber}
-            </p>
-          </div>
-
-          <button
-            onClick={() =>
-              router.push("/")
-            }
-            className="w-full mt-5 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold"
-          >
-            Continue Shopping
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // ============================================================
   // MAIN UI
@@ -793,11 +735,10 @@ useEffect(() => {
                       value={form.firstName}
                       onChange={handleChange}
                       placeholder="Full Name"
-                      className={`w-full border text-gray-800 rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
-                        errors.firstName
-                          ? "border-red-500"
-                          : "border-gray-200 focus:border-green-500"
-                      }`}
+                      className={`w-full border text-gray-800 rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${errors.firstName
+                        ? "border-red-500"
+                        : "border-gray-200 focus:border-green-500"
+                        }`}
                     />
 
                   </div>
@@ -836,11 +777,10 @@ useEffect(() => {
                       value={form.email}
                       onChange={handleChange}
                       placeholder="Email Address"
-                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
-                        errors.email
-                          ? "border-red-500"
-                          : "border-gray-200 focus:border-green-500"
-                      }`}
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${errors.email
+                        ? "border-red-500"
+                        : "border-gray-200 focus:border-green-500"
+                        }`}
                     />
 
                   </div>
@@ -864,11 +804,10 @@ useEffect(() => {
                       value={form.phone}
                       onChange={handleChange}
                       placeholder="Phone Number"
-                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
-                        errors.phone
-                          ? "border-red-500"
-                          : "border-gray-200 focus:border-green-500"
-                      }`}
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${errors.phone
+                        ? "border-red-500"
+                        : "border-gray-200 focus:border-green-500"
+                        }`}
                     />
 
                   </div>
@@ -922,11 +861,10 @@ useEffect(() => {
                       onChange={handleChange}
                       placeholder="Street Address, House/Apartment No, Landmark"
                       rows={3}
-                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none resize-none ${
-                        errors.address
-                          ? "border-red-500"
-                          : "border-gray-200 focus:border-green-500"
-                      }`}
+                      className={`w-full text-gray-800 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none resize-none ${errors.address
+                        ? "border-red-500"
+                        : "border-gray-200 focus:border-green-500"
+                        }`}
                     />
 
                   </div>
@@ -999,11 +937,10 @@ useEffect(() => {
                       <select
                         value={form.state_id}
                         onChange={handleStateChange}
-                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white ${
-                          errors.province
-                            ? "border-red-500"
-                            : "border-gray-200 focus:border-green-500"
-                        }`}
+                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none bg-white ${errors.province
+                          ? "border-red-500"
+                          : "border-gray-200 focus:border-green-500"
+                          }`}
                       >
 
                         <option value="">
@@ -1054,23 +991,21 @@ useEffect(() => {
                             },
                           })
                         }
-                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${
-                          !form.state_id
-                            ? "bg-gray-100 cursor-not-allowed"
-                            : "bg-white focus:border-green-500"
-                        } ${
-                          errors.city
+                        className={`w-full text-gray-800 appearance-none border rounded-xl pl-10 pr-3 py-3 text-sm outline-none ${!form.state_id
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : "bg-white focus:border-green-500"
+                          } ${errors.city
                             ? "border-red-500"
                             : "border-gray-200"
-                        }`}
+                          }`}
                       >
 
                         <option value="">
                           {cityLoading
                             ? "Loading Cities..."
                             : form.state_id
-                            ? "Select City"
-                            : "Select State First"}
+                              ? "Select City"
+                              : "Select State First"}
                         </option>
 
                         {cities.map((city) => (
@@ -1146,11 +1081,10 @@ useEffect(() => {
 
                   <label
                     key={key}
-                    className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer ${
-                      shippingMethod === key
-                        ? "border-green-500 bg-green-50/30"
-                        : "border-gray-200"
-                    }`}
+                    className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer ${shippingMethod === key
+                      ? "border-green-500 bg-green-50/30"
+                      : "border-gray-200"
+                      }`}
                   >
 
                     <div className="flex items-center gap-3">
@@ -1245,12 +1179,11 @@ useEffect(() => {
                           payment.id
                         )
                       }
-                      className={`py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold ${
-                        paymentMethod ===
+                      className={`py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold ${paymentMethod ===
                         payment.id
-                          ? "bg-white shadow border text-green-600"
-                          : "text-gray-500"
-                      }`}
+                        ? "bg-white shadow border text-green-600"
+                        : "text-gray-500"
+                        }`}
                     >
                       {payment.icon}
                       {payment.name}
@@ -1324,24 +1257,24 @@ useEffect(() => {
                 {(paymentMethod ===
                   "jazzcash" ||
                   paymentMethod ===
-                    "easypaisa") && (
+                  "easypaisa") && (
 
-                  <div className="mt-4 text-gray-800">
+                    <div className="mt-4 text-gray-800">
 
-                    <input
-                      name="mobileNumber"
-                      value={
-                        paymentData.mobileNumber
-                      }
-                      onChange={
-                        handlePaymentChange
-                      }
-                      placeholder="03XX XXXXXXX"
-                      className="w-full border rounded-xl p-3 text-sm"
-                    />
+                      <input
+                        name="mobileNumber"
+                        value={
+                          paymentData.mobileNumber
+                        }
+                        onChange={
+                          handlePaymentChange
+                        }
+                        placeholder="03XX XXXXXXX"
+                        className="w-full border rounded-xl p-3 text-sm"
+                      />
 
-                  </div>
-                )}
+                    </div>
+                  )}
 
                 {/* COD */}
                 {paymentMethod === "cod" && (
@@ -1494,7 +1427,7 @@ useEffect(() => {
 
                   <strong className="text-green-600">
                     {currentShipping.price ===
-                    0
+                      0
                       ? "FREE"
                       : `Rs ${currentShipping.price.toLocaleString()}`}
                   </strong>
@@ -1523,7 +1456,7 @@ useEffect(() => {
                   orderLoading ||
                   cartItems.length === 0
                 }
-                className="w-full mt-5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3.5 rounded-xl font-bold text-sm transition"
+                className="w-full mt-5 bg-green-600 hover:bg-green-700 cursor-pointer disabled:bg-gray-400 text-white py-3.5 rounded-xl font-bold text-sm transition"
               >
 
                 {orderLoading

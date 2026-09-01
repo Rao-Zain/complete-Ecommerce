@@ -1,6 +1,20 @@
+"use client";
+
 import Link from 'next/link';
 
+import { usePathname } from "next/navigation";
+
 export default function Footer() {
+
+    const pathname = usePathname();
+
+  const hiddenOn = ["/OrderSuccess"];
+
+  if (hiddenOn.includes(pathname)) {
+    return null;
+  }
+
+
   return (
     <footer className="  bg-black text-gray-400 text-sm">
       <div className="container mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">

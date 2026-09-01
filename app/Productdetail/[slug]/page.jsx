@@ -369,7 +369,9 @@ const router = useRouter();
   // BUY NOW
   // =========================================================
 
-  const handleBuyNow = () => {
+ const [buyingNow, setBuyingNow] = useState(false);
+
+const handleBuyNow = async () => {
   const token = localStorage.getItem("token");
   const userId = getUserId();
 
@@ -393,32 +395,39 @@ const router = useRouter();
     return;
   }
 
-   const buyNowItem = {
-    id: product.id,
-    quantity,
-    variant: {
-      id: activeVariant.id,
-      price: activeVariant.price,
-      cut_price: activeVariant.cut_price,
-      color_name: activeVariant.color_name,
-      size: activeVariant.size,
-      variant_image: activeVariant.variant_image,
-      product: {
-        id: product.id,
-        name: product.name,
-      },
-    },
-  };
+  setBuyingNow(true);
 
-  // Buy Now bypasses the existing cart — checkout shows only this item.
-  localStorage.setItem("cart", JSON.stringify([buyNowItem]));
-  window.dispatchEvent(new Event("cartUpdated"));
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/add-to-cart`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        user_id: Number(userId),
+        product_id: product.id,
+        variant_id: activeVariant.id,
+        qty: quantity,
+      }),
+    });
 
-  router.push("/Checkout");
+    const data = await response.json();
 
-    toast.success("Ready for checkout!");
-  };
+    if (!response.ok || data.status === false) {
+      throw new Error(data.message || "Failed to add product to cart");
+    }
 
+    // Let Navbar and any other cart-count listeners know — this is a
+    // real cart mutation now, so it should behave like Add to Cart.
+    window.dispatchEvent(new Event("cartUpdated"));
+
+    // Only navigate once the item is confirmed saved server-side.
+    router.push("/Checkout");
+  } catch (err) {
+    console.error("BUY NOW ERROR:", err);
+    toast.error(err instanceof Error ? err.message : "Something went wrong");
+  } finally {
+    setBuyingNow(false);
+  }
+};
   // =========================================================
   // LOADING
   // =========================================================
@@ -716,7 +725,7 @@ const router = useRouter();
             lg:col-span-7">
             {/* PRODUCT NAME */}
 
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-4xl font-bold leading-tight text-gray-900 break-words">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 capitalize">
               {product.name}
             </h1>
 
@@ -951,7 +960,7 @@ const router = useRouter();
               <button
                 type="button"
                 onClick={handleBuyNow}
-                disabled={!activeVariant || stock === 0}
+                disabled={buyingNow || !activeVariant || stock === 0}
                 className="
     w-full sm:w-[180px] h-11 rounded-md bg-orange-600 text-white
     text-sm font-medium hover:bg-orange-700 cursor-pointer
@@ -960,7 +969,7 @@ const router = useRouter();
   "
               >
                 <MdFlashOn className="w-5 h-5" />
-                Buy Now
+               {buyingNow ? "Processing..." : "Buy Now"}
               </button>
             </div>
           </section>
