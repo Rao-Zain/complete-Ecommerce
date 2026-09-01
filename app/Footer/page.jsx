@@ -16,7 +16,7 @@ export default function Footer() {
 
 
   return (
-    <footer className="  bg-black text-gray-400 text-sm">
+    <footer className="hidden md:block  bg-black text-gray-400 text-sm">
       <div className="container mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
         
         {/* Column 1: Logo & Description (Takes 2 columns on large screens) */}

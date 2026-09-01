@@ -76,7 +76,7 @@ function Products() {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
-  const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
+   const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
     if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
     fetchedPages.current.add(pageToFetch);
     fetchingRef.current = true;
@@ -103,12 +103,10 @@ function Products() {
       if (!res.ok) throw new Error("Failed to fetch products");
       const response = await res.json();
 
-      // depends on your Laravel response shape (paginated vs plain array)
       const items = response.data || response || [];
       const meta = response.meta || {};
 
       setProducts((prev) => {
-        // Guard against duplicates if a page ever gets fetched twice
         const existingIds = new Set(prev.map((p) => p.id));
         const newOnes = items.filter((p) => !existingIds.has(p.id));
         return [...prev, ...newOnes];
@@ -134,6 +132,43 @@ function Products() {
       fetchingRef.current = false;
     }
   }, []);
+
+  // ↓↓↓ ADD THESE TWO EFFECTS ↓↓↓
+
+  // Fires the very first fetch on mount — this call was missing entirely,
+  // which is why initialLoading never left `true` and you only saw skeletons.
+  useEffect(() => {
+    fetchProducts(1, true);
+  }, [fetchProducts]);
+
+  // Sets up the IntersectionObserver that drives infinite scroll. It waits
+  // until initialLoading is false, because the sentinel <div ref={loaderRef}>
+  // only exists in the DOM after the first page has rendered — observing a
+  // null ref does nothing.
+  useEffect(() => {
+    if (initialLoading || !loaderRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMoreRef.current && !fetchingRef.current) {
+          setPage((prev) => {
+            const nextPage = prev + 1;
+            fetchProducts(nextPage, false);
+            return nextPage;
+          });
+        }
+      },
+      { rootMargin: "300px" }
+    );
+
+    observer.observe(loaderRef.current);
+    observerRef.current = observer;
+
+    return () => observer.disconnect();
+  }, [initialLoading, fetchProducts]);
+
+  // ↑↑↑ END OF ADDED CODE ↑↑↑
 
   // Load current wishlist ids on mount + keep in sync if changed elsewhere
   useEffect(() => {

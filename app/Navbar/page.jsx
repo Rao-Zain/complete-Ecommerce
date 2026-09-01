@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FaShoppingCart,
   FaBars,
@@ -16,7 +16,9 @@ import {
   FaSearch,
   FaQrcode,
   FaSignInAlt,
-  FaUserPlus
+  FaUserPlus,
+  FaHome,
+  FaShoppingBag
 } from "react-icons/fa";
 
 import { API_BASE_URL } from "@/lib/config";
@@ -42,8 +44,12 @@ const Navbar = () => {
   const [mobileOpenCategoryId, setMobileOpenCategoryId] = useState(null);
 
   // Dropdown & Modal States
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false); // now CLICK-based, not hover
+  const dropdownRef = useRef(null); // for click-outside detection, matches reference's @click.outside
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Mobile expandable search bar (separate from the hamburger drawer — matches reference)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   // Modal States (Login & Register Popups)
   const [activeModal, setActiveModal] = useState(null); // 'login' | 'register' | null
@@ -119,56 +125,49 @@ const Navbar = () => {
     };
   }, []);
 
-  // Cart Counter — fixed: fetches the live server cart when logged in
-  // (since add-to-cart writes to the server, not localStorage), and
-  // falls back to localStorage for guests / the Buy Now flow.
- // Cart Counter — counts DISTINCT items (line items), not total quantity.
-// So 1 shirt x3 qty = count 1, but shirt + shoes = count 2.
-useEffect(() => {
-  const updateCart = async () => {
-    const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
+  // Cart Counter — counts DISTINCT items (line items), not total quantity.
+  useEffect(() => {
+    const updateCart = async () => {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
 
-    if (token && userId && userId !== "undefined" && userId !== "null") {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      if (token && userId && userId !== "undefined" && userId !== "null") {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : data.data || [];
-          setCartCount(items.length); // ← distinct items, not summed quantity
-          localStorage.setItem("cart", JSON.stringify(items));
-          return;
+          if (res.ok) {
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : data.data || [];
+            setCartCount(items.length);
+            localStorage.setItem("cart", JSON.stringify(items));
+            return;
+          }
+        } catch (err) {
+          console.error("Cart count fetch error:", err);
         }
-      } catch (err) {
-        console.error("Cart count fetch error:", err);
       }
-    }
 
-    // Guest, logged-out, or fetch failed — fall back to localStorage
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    setCartCount(cart.length); // ← distinct items, not summed quantity
-  };
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      setCartCount(cart.length);
+    };
 
-  updateCart();
-  window.addEventListener("cartUpdated", updateCart);
-  window.addEventListener("authUpdated", updateCart);
-  return () => {
-    window.removeEventListener("cartUpdated", updateCart);
-    window.removeEventListener("authUpdated", updateCart);
-  };
-}, []);
+    updateCart();
+    window.addEventListener("cartUpdated", updateCart);
+    window.addEventListener("authUpdated", updateCart);
+    return () => {
+      window.removeEventListener("cartUpdated", updateCart);
+      window.removeEventListener("authUpdated", updateCart);
+    };
+  }, []);
 
-  // 🔥 Opens the login/register modal when another component (e.g. the
-  // product page) dispatches "open-auth-modal" — lets any page trigger
-  // this Navbar's modal without needing shared state.
+  // Opens the login/register modal when another component dispatches "open-auth-modal"
   useEffect(() => {
     const handleOpenAuthModal = (e) => {
       setActiveModal(e?.detail?.mode || "login");
@@ -183,6 +182,18 @@ useEffect(() => {
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
+  // Click-outside-to-close for the profile dropdown — mirrors the reference's
+  // `@click.outside="mobileDropdownOpen = false"` behavior. Hover was removed.
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const closeMobileMenu = () => {
     setMenuOpen(false);
     setMobileOpenCategoryId(null);
@@ -196,8 +207,6 @@ useEffect(() => {
     closeMobileMenu();
     window.dispatchEvent(new Event("authUpdated"));
     window.dispatchEvent(new Event("wishlistUpdated"));
-
-    // Alert ki jagah ab seedha login modal show hoga
     setActiveModal("login");
   };
 
@@ -205,11 +214,11 @@ useEffect(() => {
     e.preventDefault();
     if (searchQuery.trim()) {
       closeMobileMenu();
+      setMobileSearchOpen(false);
       router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
-  // Handle Login API (Fixed for 401 & flexible data response extraction)
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginLoading(true);
@@ -226,54 +235,48 @@ useEffect(() => {
       });
 
       const data = await res.json();
-      console.log("Login Response Data:", data);
 
-     if (res.ok) {
-  const userToken = data.data.token || data.data.access_token || data.data.data?.token;
-  const userName = data.data.user?.name || data.data.name || data.data.data?.name || loginEmail.split("@")[0];
-  const userEmail = data.data.user?.email || data.data.email || data.data.data?.email || loginEmail;
-  const userId =
-    data.data.user?.id ??
-    data.data.id ??
-    data.data.data?.user?.id ??
-    data.data.data?.id;
+      if (res.ok) {
+        const userToken = data.data.token || data.data.access_token || data.data.data?.token;
+        const userName = data.data.user?.name || data.data.name || data.data.data?.name || loginEmail.split("@")[0];
+        const userEmail = data.data.user?.email || data.data.email || data.data.data?.email || loginEmail;
+        const userId =
+          data.data.user?.id ??
+          data.data.id ??
+          data.data.data?.user?.id ??
+          data.data.data?.id;
 
-  console.log("Extracted userId:", userId); // debug ke liye — confirm karega ke ab sahi value mil rahi hai
+        if (!userToken) {
+          setLoginError("Login succeeded, but no token was returned by the server.");
+          return;
+        }
 
-  if (!userToken) {
-    setLoginError("Login succeeded, but no token was returned by the server.");
-    return;
-  }
+        if (!userId) {
+          setLoginError("Login succeeded, but no user ID was returned by the server.");
+          return;
+        }
 
-  if (!userId) {
-    console.error("Login response shape:", data);
-    setLoginError("Login succeeded, but no user ID was returned by the server.");
-    return;
-  }
+        localStorage.setItem("userId", String(userId));
+        localStorage.setItem("token", userToken);
+        localStorage.setItem("userName", userName);
+        localStorage.setItem("email", userEmail);
 
-  localStorage.setItem("userId", String(userId));
-  localStorage.setItem("token", userToken);
-  localStorage.setItem("userName", userName);
-  localStorage.setItem("email", userEmail);
-
-  window.dispatchEvent(new Event("authUpdated"));
-  window.dispatchEvent(new Event("wishlistUpdated"));
-  setActiveModal(null);
-  setLoginEmail("");
-  setLoginPassword("");
-} else {
+        window.dispatchEvent(new Event("authUpdated"));
+        window.dispatchEvent(new Event("wishlistUpdated"));
+        setActiveModal(null);
+        setLoginEmail("");
+        setLoginPassword("");
+      } else {
         const errorMessage = data.message || data.error || "Invalid email or password (401 Unauthorized)";
         setLoginError(errorMessage);
       }
     } catch (err) {
-      console.error("Login catch error:", err);
       setLoginError("Something went wrong. Please check your network connection.");
     } finally {
       setLoginLoading(false);
     }
   };
 
-  // Handle Register API
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setRegFieldErrors({});
@@ -302,17 +305,8 @@ useEffect(() => {
       });
 
       const data = await res.json();
-      console.log("Register Response Data:", data);
 
       if (res.ok) {
-        // FIX: the register endpoint wraps its payload the same way login
-        // does — { data: { token, user: { id, name, email } } } — but this
-        // was previously reading top-level `data.user`/`data.id` (which
-        // don't exist), so `userId` resolved to `undefined` and got saved
-        // to localStorage as the literal string "undefined". That string
-        // then failed the `userId !== "undefined"` check in Add to Cart,
-        // producing "User information not found. Please log in again."
-        // even though the account had just been created successfully.
         const userToken = data.data?.token || data.data?.access_token || data.token || data.access_token;
         const userName = data.data?.user?.name || data.data?.name || data.user?.name || data.name || regName;
         const userEmail = data.data?.user?.email || data.data?.email || data.user?.email || data.email || regEmail;
@@ -337,7 +331,6 @@ useEffect(() => {
         setRegConfirmPassword("");
         setRegFieldErrors({});
       } else {
-        // Backend "errors" object ko field-wise map karein (e.g. { email: ["The email has already been taken."] })
         if (data.errors && typeof data.errors === "object") {
           const mappedErrors = {};
           Object.keys(data.errors).forEach((field) => {
@@ -346,7 +339,6 @@ useEffect(() => {
           });
           setRegFieldErrors(mappedErrors);
         } else {
-          // Koi field-specific error na ho to hi general banner dikhayein
           setRegError(data.message || "Registration failed.");
         }
       }
@@ -366,12 +358,27 @@ useEffect(() => {
   const activeMainCat = categoriesData.find((c) => c.id === activeMain);
   const activeSubCat = activeMainCat?.children?.find((s) => s.id === activeSub);
 
+  // Reference's secondary-bar center links: "All Products", "Categories",
+  // then the first 4 real top-level categories (Men's Fashion, Women's
+  // Fashion, Mother & Baby, Home & Lifestyle) — not generic Home/Contact links.
+  const quickLinkCategories = categoriesData.slice(0, 4);
+
   return (
     <>
       <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
         <div className="container mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center h-16 md:h-20 px-3 md:px-0">
+            {/* Mobile hamburger — first child in the flex row, so justify-between
+                puts it on the far left. Hidden on md+ (desktop has no hamburger). */}
+            <button
+              className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? <FaTimes /> : <FaBars />}
+            </button>
+
             <Link href="/" className="flex items-center gap-2 group flex-shrink-0" onClick={closeMobileMenu}>
               <div>
                 <h2 className="font-extrabold text-xl md:text-2xl tracking-tight text-white">
@@ -387,7 +394,7 @@ useEffect(() => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products, brands and more..."
-                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner"
+                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner border border-gray-300"
                 />
                 <div className="absolute right-2 flex items-center gap-2">
                   <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
@@ -419,18 +426,18 @@ useEffect(() => {
                 )}
               </Link>
 
-              {/* User Profile / Sign In Dropdown */}
-              <div
-                className="relative ml-2 py-2"
-                onMouseEnter={() => setShowDropdown(true)}
-                onMouseLeave={() => setShowDropdown(false)}
-              >
-                <div
+              {/* Divider — matches reference's border-l between cart and profile */}
+              <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
+
+              {/* User Profile / Sign In — CLICK-based dropdown (matches reference), not hover */}
+              <div className="relative py-1" ref={dropdownRef}>
+                <button
+                  type="button"
                   onClick={() => {
                     if (!isLoggedIn) {
                       setActiveModal("login");
                     } else {
-                      setShowDropdown(!showDropdown);
+                      setShowDropdown((prev) => !prev);
                     }
                   }}
                   className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-gray-800 border border-transparent transition p-1.5"
@@ -444,10 +451,10 @@ useEffect(() => {
                       {isLoggedIn ? user.name : "Sign in / Register"}
                     </span>
                   </div>
-                </div>
+                </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 top-full mt-0 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
                     <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
                       <h3 className="font-bold text-gray-900 truncate text-sm">
                         {isLoggedIn ? user.name : "Hello, Guest"}
@@ -487,8 +494,17 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Mobile: cart icon stays visible next to the hamburger so it's reachable without opening the drawer */}
+            {/* Mobile: search toggle + cart icon + hamburger */}
             <div className="flex md:hidden items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen((prev) => !prev)}
+                className="p-2 text-white"
+                aria-label="Toggle search"
+              >
+                <FaSearch className="text-base" />
+              </button>
+
               <Link href="/CartProduct" className="relative p-2 text-white">
                 <FaShoppingCart className="text-lg" />
                 {cartCount > 0 && (
@@ -497,28 +513,36 @@ useEffect(() => {
                   </span>
                 )}
               </Link>
-
-              <button
-                className="text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label={menuOpen ? "Close menu" : "Open menu"}
-              >
-                {menuOpen ? <FaTimes /> : <FaBars />}
-              </button>
             </div>
           </div>
         </div>
 
+        {/* Mobile expandable search bar — separate from the drawer, matches reference */}
+        {mobileSearchOpen && (
+          <div className="md:hidden w-full bg-gray-200 border-t border-gray-300 shadow-inner px-3 py-2">
+            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products, brands and more..."
+                className="w-full bg-white text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none border border-gray-300"
+              />
+              <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
+                <FaSearch className="text-xs" />
+              </button>
+            </form>
+          </div>
+        )}
+
         {/* --- BOTTOM NAVBAR --- */}
-        {/* Was `hidden md:block` (fully invisible on phones). Now visible on
-            all screen sizes: desktop keeps the hover mega-menu + centered
-            links; mobile gets a horizontally-scrollable link row instead
-            (hover menus don't work on touch, so the full category tree
-            lives in the slide-out drawer below). */}
-        <div className="block border-t border-gray-800 bg-white text-gray-800 relative shadow-sm">
-          <div className="container mx-auto flex items-center h-11 md:h-12 text-sm font-medium relative px-2 md:px-0">
+        {/* Matches reference: hidden below lg — mobile relies on the drawer,
+            not a scrollable pill row. */}
+        <div className="hidden lg:block lg:sticky lg:top-0 bg-white text-gray-800 relative shadow-md z-40">
+          <div className="container mx-auto flex items-center h-12 text-sm font-medium relative px-2 md:px-0">
             <div
-              className="relative hidden md:block"
+              className="relative"
               onMouseEnter={() => setIsCategoryOpen(true)}
               onMouseLeave={resetCategoryMenu}
             >
@@ -599,30 +623,41 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Mobile: horizontally-scrollable pill row. Desktop: centered links (unchanged). */}
-            <div className="flex md:absolute md:left-1/2 md:-translate-x-1/2 items-center gap-5 md:gap-8 text-xs font-semibold tracking-wide text-gray-700 overflow-x-auto md:overflow-visible whitespace-nowrap w-full md:w-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <Link href="/" className="hover:text-blue-600 transition py-2 flex-shrink-0">Home</Link>
-              <Link href="/Products" className="hover:text-blue-600 transition py-2 flex-shrink-0">Products</Link>
-              <Link href="/ExploreProducts" className="hover:text-blue-600 transition py-2 flex-shrink-0">Categories</Link>
-              <Link href="/Contact" className="hover:text-blue-600 transition py-2 flex-shrink-0">Contact Us</Link>
+            {/* Center links — matches reference: All Products, Categories, then
+                real top-level category names (not generic Home/Contact links). */}
+            <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto">
+              <Link href="/Products" className="hover:text-blue-600 transition whitespace-nowrap ms-6">
+                All Products
+              </Link>
+              <Link href="/ExploreProducts" className="hover:text-blue-600 transition whitespace-nowrap">
+                Categories
+              </Link>
+              {quickLinkCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/FashionCategory/${cat.id}`}
+                  className="hover:text-blue-600 transition whitespace-nowrap"
+                >
+                  {cat.name}
+                </Link>
+              ))}
             </div>
+
+            {/* Spacer to balance the left "All Categories" width for true centering */}
+            <div className="w-64 shrink-0" />
           </div>
         </div>
       </nav>
 
-      {/* ==================================================== */}
-      {/* 📱 MOBILE SLIDE-OUT MENU — previously missing entirely */}
-      {/* ==================================================== */}
+      {/* MOBILE SLIDE-OUT MENU */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop — click to close */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={closeMobileMenu}
           />
 
-          {/* Drawer panel */}
-          <div className="absolute top-0 right-0 h-full w-[82%] max-w-sm bg-white text-gray-800 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200">
+          <div className="absolute top-0 left-0 h-full w-[82%] max-w-sm bg-white text-gray-800 shadow-2xl overflow-y-auto animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
               <h2 className="font-extrabold text-lg tracking-tight text-gray-900">
                 Shop<span className="text-blue-600">Nest</span>
@@ -636,7 +671,6 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Search */}
             <form onSubmit={handleSearchSubmit} className="p-4 border-b border-gray-100">
               <div className="relative w-full flex items-center">
                 <input
@@ -652,7 +686,6 @@ useEffect(() => {
               </div>
             </form>
 
-            {/* Account */}
             <div className="p-4 border-b border-gray-100">
               {isLoggedIn ? (
                 <div className="flex items-center justify-between">
@@ -682,7 +715,6 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Quick links */}
             <div className="p-4 border-b border-gray-100 grid grid-cols-2 gap-2">
               <Link href="/wishlist" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
                 <FaHeart className="text-gray-400" /> Wishlist
@@ -704,15 +736,11 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Nav links */}
             <div className="p-4 border-b border-gray-100 flex flex-col gap-1">
-              <Link href="/" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Home</Link>
-              <Link href="/Products" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Products</Link>
+              <Link href="/Products" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">All Products</Link>
               <Link href="/ExploreProducts" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Categories</Link>
-              <Link href="/Contact" onClick={closeMobileMenu} className="py-2 text-sm font-semibold text-gray-800">Contact Us</Link>
             </div>
 
-            {/* Category accordion (mega-menu's mobile equivalent) */}
             <div className="p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Shop by Category</h3>
               {loading ? (
@@ -769,16 +797,12 @@ useEffect(() => {
         </div>
       )}
 
-      {/* ==================================================== */}
-      {/* 🌟 BLURRED BACKGROUND MODAL POPUP (LOGIN & REGISTER) */}
-      {/* ==================================================== */}
+      {/* LOGIN & REGISTER MODAL */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
 
-          {/* LOGIN MODAL */}
           {activeModal === "login" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
-
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
@@ -846,10 +870,8 @@ useEffect(() => {
             </div>
           )}
 
-          {/* REGISTER MODAL */}
           {activeModal === "register" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-8 relative animate-in zoom-in-95 duration-200">
-
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
@@ -862,7 +884,6 @@ useEffect(() => {
                 <p className="text-xs text-gray-500 mt-1">Please fill in the details below to create your new account.</p>
               </div>
 
-              {/* General (non-field) error — sirf tab dikhega jab koi field-specific error na ho */}
               {regError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl text-center font-medium">
                   {regError}
@@ -972,6 +993,75 @@ useEffect(() => {
 
         </div>
       )}
+
+      {/* MOBILE BOTTOM TAB BAR — fixed, icons only, matches reference. Hidden on md+ */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 inset-x-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-2"
+        style={{ marginBottom: "-2px" }}
+      >
+        <div className="flex items-center justify-between">
+          {/* Home */}
+          <Link
+            href="/"
+            className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
+          >
+            <FaHome className="text-base" />
+            <span className="text-[10px] mt-0.5">Home</span>
+          </Link>
+
+          {/* Shop */}
+          <Link
+            href="/Products"
+            className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
+          >
+            <FaShoppingBag className="text-base" />
+            <span className="text-[10px] mt-0.5">Shop</span>
+          </Link>
+
+          {/* Cart — badge only shows when count > 0, reusing the same cartCount state as the header */}
+          <Link
+            href="/CartProduct"
+            className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
+          >
+            <div className="relative">
+              <FaShoppingCart className="text-base" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5">Cart</span>
+          </Link>
+
+          {/* Wishlist */}
+          <Link
+            href="/Wishlist"
+            className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
+          >
+            <div className="relative">
+              <FaHeart className="text-base" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  {wishlistCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5">Wishlist</span>
+          </Link>
+
+          {/* Account — logged in goes straight to /Profile, guests get the login modal
+              (same behavior as the desktop profile trigger) */}
+          <button
+            type="button"
+            onClick={() => (isLoggedIn ? router.push("/Account") : setActiveModal("login"))}
+            className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
+          >
+            <FaUser className="text-base" />
+            <span className="text-[10px] mt-0.5">Account</span>
+          </button>
+        </div>
+      </div>
     </>
   );
 };
