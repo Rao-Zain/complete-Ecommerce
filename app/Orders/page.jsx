@@ -10,9 +10,6 @@ import {
     HiOutlineUser,
 } from "react-icons/hi2";
 
-// Set NEXT_PUBLIC_API_URL in your .env.local file (e.g. http://localhost:8000)
-// const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const Orders = () => {
@@ -20,6 +17,7 @@ const Orders = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [userId, setUserId] = useState(null);
+    const [checkedAuth, setCheckedAuth] = useState(false); // login check complete hui ya nahi
 
     const getAuthHeaders = () => {
         const token = localStorage.getItem('token');
@@ -31,16 +29,23 @@ const Orders = () => {
     };
 
     // localStorage is only available on the client side, so read it inside useEffect
+    // FIX: key "userId" hai (jaisa baaki pages me use ho raha hai), "userID" nahi
     useEffect(() => {
-        const id = localStorage.getItem("userID") || '';
+        const id = localStorage.getItem("userId") || '';
         setUserId(id);
+        setCheckedAuth(true);
     }, []);
 
     useEffect(() => {
+        if (!checkedAuth) return; // pehle localStorage check complete hone do
+
         if (userId) {
             fetchOrders(userId);
+        } else {
+            // login hi nahi hai, spinner ko hamesha ghumny mat do
+            setLoading(false);
         }
-    }, [userId]);
+    }, [userId, checkedAuth]);
 
     const fetchOrders = async (uid) => {
         try {
@@ -48,13 +53,13 @@ const Orders = () => {
             setError(null);
             const token = localStorage.getItem('token');
 
-            if (!userId || !token) {
-                toast.error('Please login first to view your profile.');
+            if (!uid || !token) {
+                setError("Please login first to view your orders.");
                 setLoading(false);
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/api/user-orders?user_id=${userId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/user-orders?user_id=${uid}`, {
                 method: 'GET',
                 headers: getAuthHeaders(),
             });
@@ -149,7 +154,7 @@ const Orders = () => {
                         {orders.map((order) => (
                             <Link
                                 key={order.id}
-                                href={`/ordersDetail/${order.id}`}
+                                href={`/OrderDetail/${order.id}`}
                                 className="block group"
                             >
                                 <div className="bg-white group-hover:bg-white rounded-2xl p-5 sm:px-6 sm:py-4 transition-all duration-200 border-b-3 border-transparent group-hover:border-b-green-500 shadow-xs border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

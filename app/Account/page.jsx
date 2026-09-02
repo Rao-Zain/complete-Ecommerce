@@ -11,7 +11,7 @@ import {
   FaHeart,
   FaShoppingCart, 
   FaHeadset,
-  FaSignOutAlt,
+  FaSignOutAlt,   
 } from "react-icons/fa";
 
 const Account = () => {
