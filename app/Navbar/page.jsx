@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   FaShoppingCart,
   FaBars,
@@ -365,12 +366,12 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-black text-white relative shadow-md">
+      {/* 1. TOP NAVBAR (Black) - Scrolls naturally */}
+      <nav className="bg-black  text-white relative shadow-md">
         <div className="container mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center h-16 md:h-20 px-3 md:px-0">
-            {/* Mobile hamburger — first child in the flex row, so justify-between
-                puts it on the far left. Hidden on md+ (desktop has no hamburger). */}
+            {/* Mobile hamburger */}
             <button
               className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -379,12 +380,25 @@ const Navbar = () => {
               {menuOpen ? <FaTimes /> : <FaBars />}
             </button>
 
-            <Link href="/" className="flex items-center gap-2 group flex-shrink-0" onClick={closeMobileMenu}>
-              <div>
-                <h2 className="font-extrabold text-xl md:text-2xl tracking-tight text-white">
-                  Shop<span className="text-blue-500">Nest</span>
-                </h2>
-              </div>
+            <Link
+              href="/"
+              className="flex items-center gap-2 group flex-shrink-0"
+              onClick={closeMobileMenu}
+            >
+              <Image
+                src="/logo (9).png"
+                alt="ShopNest Logo"
+                width={280}
+                height={180}
+                className="h-28  w-auto object-contain"
+                priority
+              />
+
+              {/* <div>
+    <h2 className="font-extrabold text-xl md:text-2xl tracking-tight text-white leading-none">
+      Shop<span className="text-blue-500">Nest</span>
+    </h2>
+  </div> */}
             </Link>
 
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
@@ -417,7 +431,7 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/CartProduct" className="relative  hover:bg-gray-800 rounded-full transition text-white">
                 <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
                 {cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -426,10 +440,9 @@ const Navbar = () => {
                 )}
               </Link>
 
-              {/* Divider — matches reference's border-l between cart and profile */}
               <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
-              {/* User Profile / Sign In — CLICK-based dropdown (matches reference), not hover */}
+              {/* User Profile / Sign In */}
               <div className="relative py-1" ref={dropdownRef}>
                 <button
                   type="button"
@@ -440,14 +453,14 @@ const Navbar = () => {
                       setShowDropdown((prev) => !prev);
                     }
                   }}
-                  className="flex items-center gap-2 cursor-pointer rounded-xl hover:bg-gray-800 border border-transparent transition p-1.5"
+                  className="flex items-center gap-2 cursor-pointer rounded-xl  border border-transparent transition "
                 >
-                  <div className="text-white flex items-center justify-center text-lg">
+                  <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
                     <FaUser />
                   </div>
-                  <div className="text-left leading-tight">
+                  <div className="text-left leading-tight ">
                     <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
-                    <span className="block text-xs font-bold text-white truncate max-w-[110px]">
+                    <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
                       {isLoggedIn ? user.name : "Sign in / Register"}
                     </span>
                   </div>
@@ -494,7 +507,7 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* Mobile: search toggle + cart icon + hamburger */}
+            {/* Mobile: search toggle + cart icon */}
             <div className="flex md:hidden items-center gap-1">
               <button
                 type="button"
@@ -517,7 +530,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile expandable search bar — separate from the drawer, matches reference */}
+        {/* Mobile expandable search bar */}
         {mobileSearchOpen && (
           <div className="md:hidden w-full bg-gray-200 border-t border-gray-300 shadow-inner px-3 py-2">
             <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
@@ -535,119 +548,115 @@ const Navbar = () => {
             </form>
           </div>
         )}
+      </nav>
 
-        {/* --- BOTTOM NAVBAR --- */}
-        {/* Matches reference: hidden below lg — mobile relies on the drawer,
-            not a scrollable pill row. */}
-        <div className="hidden lg:block lg:sticky lg:top-0 bg-white text-gray-800 relative shadow-md z-40">
-          <div className="container mx-auto flex items-center h-12 text-sm font-medium relative px-2 md:px-0">
-            <div
-              className="relative"
-              onMouseEnter={() => setIsCategoryOpen(true)}
-              onMouseLeave={resetCategoryMenu}
+      {/* 2. BOTTOM NAVBAR (White) - Sticks to top when scrolling on lg screens */}
+      <div className="hidden lg:block sticky top-0 bg-white text-gray-800 shadow-md z-40">
+        <div className="container mx-auto flex items-center h-12 text-sm font-medium px-2 md:px-0">
+          <div
+            className="relative"
+            onMouseEnter={() => setIsCategoryOpen(true)}
+            onMouseLeave={resetCategoryMenu}
+          >
+            <button
+              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+              className="flex items-center gap-2.5 w-64 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
             >
-              <button
-                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                className="flex items-center gap-2.5 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
-              >
-                <FaBars className="text-sm" /> <span>All Categories</span>{" "}
-                <FaChevronDown className="text-xs text-gray-500 ml-2" />
-              </button>
+              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
+              <FaChevronDown className="text-xs text-gray-500 ml-auto " />
+            </button>
 
-              {/* Categories Dropdown Panels */}
-              <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
-                {/* LEVEL 1: Main Categories */}
-                <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
-                  {loading ? (
-                    <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
-                  ) : (
-                    <ul className="space-y-0.5">
-                      {categoriesData.map((mainCat) => (
-                        <li key={mainCat.id}>
-                          <div
-                            onMouseEnter={() => { setActiveMain(mainCat.id); setActiveSub(null); }}
-                            onClick={() => { resetCategoryMenu(); router.push(`/FashionCategory/${mainCat.id}`); }}
-                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
-                          >
-                            <span className="text-sm font-semibold">{mainCat.name}</span>
-                            {mainCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                {/* LEVEL 2: Sub Categories */}
-                {activeMainCat?.children?.length > 0 && (
-                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
-                    <ul className="space-y-0.5">
-                      {activeMainCat.children.map((subCat) => (
-                        <li key={subCat.id}>
-                          <div
-                            onMouseEnter={() => setActiveSub(subCat.id)}
-                            className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeSub === subCat.id ? "bg-blue-50 text-blue-600" : ""}`}
-                          >
-                            <Link href={`/ExploreProducts/${activeMainCat.slug}/${subCat.slug}`} onClick={resetCategoryMenu} className="text-sm font-semibold flex-1">
-                              {subCat.name}
-                            </Link>
-                            {subCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* LEVEL 3: Child Categories */}
-                {activeSubCat?.children?.length > 0 && (
-                  <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
-                    <ul className="space-y-0.5">
-                      {activeSubCat.children.map((childCat) => {
-                        const childSlugPath = `${activeMainCat.slug}/${activeSubCat.slug}/${childCat.slug}`;
-                        return (
-                          <li key={childCat.id}>
-                            <Link
-                              href={`/ExploreProducts/${childSlugPath}`}
-                              onClick={resetCategoryMenu}
-                              className="block py-2 px-3 text-sm font-semibold transition rounded-md text-gray-700 hover:bg-gray-50 hover:text-black"
-                            >
-                              {childCat.name}
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
+            {/* Categories Dropdown Panels */}
+            <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
+              {/* LEVEL 1: Main Categories */}
+              <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
+                {loading ? (
+                  <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {categoriesData.map((mainCat) => (
+                      <li key={mainCat.id}>
+                        <div
+                          onMouseEnter={() => { setActiveMain(mainCat.id); setActiveSub(null); }}
+                          onClick={() => { resetCategoryMenu(); router.push(`/Categories/${mainCat.slug}`); }}
+                          className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeMain === mainCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                        >
+                          <span className="text-sm font-semibold">{mainCat.name}</span>
+                          {mainCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
-            </div>
 
-            {/* Center links — matches reference: All Products, Categories, then
-                real top-level category names (not generic Home/Contact links). */}
-            <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto">
-              <Link href="/Products" className="hover:text-blue-600 transition whitespace-nowrap ms-6">
-                All Products
-              </Link>
-              <Link href="/ExploreProducts" className="hover:text-blue-600 transition whitespace-nowrap">
-                Categories
-              </Link>
-              {quickLinkCategories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/FashionCategory/${cat.id}`}
-                  className="hover:text-blue-600 transition whitespace-nowrap"
-                >
-                  {cat.name}
-                </Link>
-              ))}
-            </div>
+              {/* LEVEL 2: Sub Categories */}
+              {activeMainCat?.children?.length > 0 && (
+                <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
+                  <ul className="space-y-0.5">
+                    {activeMainCat.children.map((subCat) => (
+                      <li key={subCat.id}>
+                        <div
+                          onMouseEnter={() => setActiveSub(subCat.id)}
+                          className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer text-gray-700 hover:bg-gray-50 ${activeSub === subCat.id ? "bg-blue-50 text-blue-600" : ""}`}
+                        >
+                          <Link href={`/Categories/${activeMainCat.slug}/${subCat.slug}`} onClick={resetCategoryMenu} className="text-sm font-semibold flex-1">
+                            {subCat.name}
+                          </Link>
+                          {subCat.children?.length > 0 && <FaChevronRight className="text-xs text-gray-400" />}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {/* Spacer to balance the left "All Categories" width for true centering */}
-            <div className="w-64 shrink-0" />
+              {/* LEVEL 3: Child Categories */}
+              {activeSubCat?.children?.length > 0 && (
+                <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
+                  <ul className="space-y-0.5">
+                    {activeSubCat.children.map((childCat) => {
+                      const childSlugPath = `${activeMainCat.slug}/${activeSubCat.slug}/${childCat.slug}`;
+                      return (
+                        <li key={childCat.id}>
+                          <Link
+                            href={`/ExploreProducts/${childSlugPath}`}
+                            onClick={resetCategoryMenu}
+                            className="block py-2 px-3 text-sm font-semibold transition rounded-md text-gray-700 hover:bg-gray-50 hover:text-black"
+                          >
+                            {childCat.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Center links */}
+          <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto">
+            <Link href="/Products" className="hover:text-blue-600 transition whitespace-nowrap ms-6">
+              All Products
+            </Link>
+            <Link href="/ExploreProducts" className="hover:text-blue-600 transition whitespace-nowrap">
+              Categories
+            </Link>
+            {quickLinkCategories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/Categories/${cat.id}`}
+                className="hover:text-blue-600 transition whitespace-nowrap"
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </div>
+
+          <div className="w-64 shrink-0" />
         </div>
-      </nav>
+      </div>
 
       {/* MOBILE SLIDE-OUT MENU */}
       {menuOpen && (
@@ -752,7 +761,7 @@ const Navbar = () => {
                       <div className="flex items-center justify-between">
                         <button
                           type="button"
-                          onClick={() => { closeMobileMenu(); router.push(`/FashionCategory/${mainCat.id}`); }}
+                          onClick={() => { closeMobileMenu(); router.push(`/Categories/${mainCat.id}`); }}
                           className="flex-1 text-left py-2 text-sm font-semibold text-gray-700 cursor-pointer"
                         >
                           {mainCat.name}
@@ -778,7 +787,7 @@ const Navbar = () => {
                           {mainCat.children.map((subCat) => (
                             <li key={subCat.id}>
                               <Link
-                                href={`/ExploreProducts/${mainCat.slug}/${subCat.slug}`}
+                                href={`/Categories/${mainCat.slug}/${subCat.slug}`}
                                 onClick={closeMobileMenu}
                                 className="block py-1.5 text-xs font-medium text-gray-600"
                               >
@@ -899,11 +908,10 @@ const Navbar = () => {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder="Enter your full name"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
-                      regFieldErrors.name
-                        ? "border-red-500 focus:border-red-500"
-                        : "border-gray-200 focus:border-blue-500"
-                    }`}
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.name
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-200 focus:border-blue-500"
+                      }`}
                   />
                   {regFieldErrors.name && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.name}</p>
@@ -918,11 +926,10 @@ const Navbar = () => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
-                      regFieldErrors.email
-                        ? "border-red-500 focus:border-red-500"
-                        : "border-gray-200 focus:border-blue-500"
-                    }`}
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.email
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-200 focus:border-blue-500"
+                      }`}
                   />
                   {regFieldErrors.email && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.email}</p>
@@ -937,11 +944,10 @@ const Navbar = () => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     placeholder="••••••••"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
-                      regFieldErrors.password
-                        ? "border-red-500 focus:border-red-500"
-                        : "border-gray-200 focus:border-blue-500"
-                    }`}
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.password
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-200 focus:border-blue-500"
+                      }`}
                   />
                   {regFieldErrors.password && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.password}</p>
@@ -956,11 +962,10 @@ const Navbar = () => {
                     value={regConfirmPassword}
                     onChange={(e) => setRegConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${
-                      regFieldErrors.password_confirmation
-                        ? "border-red-500 focus:border-red-500"
-                        : "border-gray-200 focus:border-blue-500"
-                    }`}
+                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.password_confirmation
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-200 focus:border-blue-500"
+                      }`}
                   />
                   {regFieldErrors.password_confirmation && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.password_confirmation}</p>

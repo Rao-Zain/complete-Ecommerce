@@ -44,6 +44,11 @@ const SIDEBAR_HEIGHT = "h-[calc(100vh-6rem)]";
  * `selectedSizes`, and `selectedBrands` are arrays, and each `on*Toggle`
  * callback receives the single value clicked — the parent adds/removes
  * it from the array.
+ *
+ * onCurrentCategoryChange (optional): called with the resolved category
+ * node (or null) whenever the current selection changes — the parent's
+ * ExploreProducts page uses this for the "Products in {name}" heading,
+ * since this component now owns the category data itself.
  */
 const CategorySidebar = ({
     pathSegments = [],       // array of slug segments, e.g. ['mens-fashion','t-shirts','graphic-tees']
@@ -57,6 +62,7 @@ const CategorySidebar = ({
     selectedBrands = [],
     onBrandToggle,
     onClearFilters,
+    onCurrentCategoryChange, // (node: object|null) => void
 }) => {
     const [categoriesData, setCategoriesData] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -122,9 +128,19 @@ const CategorySidebar = ({
         selectedSizes.length > 0 ||
         selectedBrands.length > 0;
 
+    // Let the parent know which category node is currently resolved, so
+    // it can render a "Products in {name}" heading without needing its
+    // own copy of the category tree.
+    useEffect(() => {
+        if (onCurrentCategoryChange) {
+            onCurrentCategoryChange(currentMatch?.node || null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentMatch?.node?.id]);
+
     if (categoriesLoading) {
         return (
-            <aside className="w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:block sticky top-12 animate-pulse">
+            <aside className={`w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:block sticky ${SIDEBAR_TOP_OFFSET} animate-pulse`}>
                 <div className="w-24 h-5 bg-gray-200 rounded mb-4"></div>
                 <div className="space-y-2">
                     {[...Array(6)].map((_, i) => (
@@ -137,7 +153,7 @@ const CategorySidebar = ({
 
     return (
         <aside
-            className={`w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:flex lg:flex-col ${SIDEBAR_TOP_OFFSET} ${expanded ? '' : SIDEBAR_HEIGHT}`}
+            className={`w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:flex lg:flex-col sticky ${SIDEBAR_TOP_OFFSET} ${expanded ? '' : SIDEBAR_HEIGHT}`}
         >
             <div className="flex items-center justify-between mb-2">
                 <h2 className="font-bold text-sm tracking-tight text-gray-900">
@@ -178,8 +194,8 @@ const CategorySidebar = ({
                                     type="button"
                                     key={sibling.id}
                                     onClick={() => onCategoryClick(`${parentPath}/${sibling.slug}`)}
-                                    className={`text-sm text-left py-2 px-3 rounded transition cursor-pointer border-none font-semibold ${isSelected
-                                        ? 'bg-gray-200 text-black'
+                                    className={`text-sm text-left py-1.5 px-3 rounded transition cursor-pointer border-none font-semibold ${isSelected
+                                        ? 'bg-gray-100 text-black'
                                         : 'text-gray-700 hover:bg-gray-50 bg-transparent'
                                         }`}
                                 >
@@ -225,7 +241,10 @@ const CategorySidebar = ({
                                     key={index}
                                     onClick={() => onColorToggle(colorObj.name)}
                                     title={colorObj.name}
-                                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full cursor-pointer transition-all duration-200 transform hover:scale-110 relative flex items-center justify-center shadow-sm border-none ${isSelected ? 'ring-2 ring-offset-2 ring-black scale-110' : 'opacity-80 hover:opacity-100'}`}
+                                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full cursor-pointer transition-all duration-200 transform hover:scale-110 relative flex items-center justify-center border-none ${isSelected
+                                        ? 'scale-110 shadow-md ring-2 ring-inset ring-white/70'
+                                        : 'shadow-sm opacity-80 hover:opacity-100'
+                                        }`}
                                     style={inlineBg}
                                 >
                                     {isSelected && <FaCheck className={`text-[10px] ${isLightColor ? 'text-black' : 'text-white'}`} />}
