@@ -431,7 +431,7 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link href="/CartProduct" className="relative  hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
                 {cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -439,6 +439,7 @@ const Navbar = () => {
                   </span>
                 )}
               </Link>
+
 
               <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
@@ -553,17 +554,18 @@ const Navbar = () => {
       {/* 2. BOTTOM NAVBAR (White) - Sticks to top when scrolling on lg screens */}
       <div className="hidden lg:block sticky top-0 bg-white text-gray-800 shadow-md z-40">
         <div className="container mx-auto flex items-center h-12 text-sm font-medium px-2 md:px-0">
-          <div
+      <div
             className="relative"
             onMouseEnter={() => setIsCategoryOpen(true)}
             onMouseLeave={resetCategoryMenu}
           >
             <button
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-2.5 w-64 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
+              className="flex items-center gap-2.5 w-64 h-9 bg-gray-100 text-gray-800 hover:bg-gray-100 px-5 transition cursor-pointer"
             >
-              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
-              <FaChevronDown className="text-xs text-gray-500 ml-auto " />
+              <FaBars className="text-sm" />
+              <span className="font-semibold text-sm text-gray-900">All Categories</span>
+              <FaChevronDown className="text-xs text-gray-500 ml-auto" />
             </button>
 
             {/* Categories Dropdown Panels */}

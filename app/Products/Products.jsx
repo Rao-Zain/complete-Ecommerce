@@ -356,7 +356,7 @@ function Products() {
                       </div>
 
                       {/* Pricing & Stock */}
-                      <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-gray-100">
+                      <div className="mt-2 ">
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex flex-col">
                             {price !== null && (

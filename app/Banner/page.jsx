@@ -3,7 +3,7 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 async function getBanners() {
   try {
-    const res = await fetch(`${API_BASE_URL}/banner/main`, {
+    const res = await fetch(`${API_BASE_URL}/api/banner/main`, {
       // har 60 seconds baad revalidate ho, ya cache: 'no-store' bhi kar sakte hain
       next: { revalidate: 60 },
     });
@@ -18,33 +18,65 @@ async function getBanners() {
   }
 }
 
-async function Banners() {
-  const banners = await getBanners();
+// API se "40% OFF" jaisi description string se sirf number nikalne k liye
+function extractDiscount(description) {
+  if (!description) return null;
+  const match = description.match(/(\d+)\s*%/);
+  return match ? match[1] : null;
+}
 
-  // API se data na aaye tou fallback static banners use ho jayen
-  const largeBanner = banners.find((b) => b.position === "large") ?? {
-    id: "fallback-large",
-    title: "Summer Collection",
-    subtitle: "Up to 50% OFF",
-    discount: "70%",
-    image: "/img7.jfif",
-    buttonText: "Shop Now",
-  };
+async function Banners() {
+  const rawBanners = await getBanners();
+
+  // API response ko sort_order k hisab se sort kar dein taake order guaranteed rahe
+  const sortedBanners = [...rawBanners].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
+
+  // API koi "position" field nahi deti, is liye sort_order k basis par
+  // pehla banner "large" aur agle do "small" maan k chalte hain
+  const apiLarge = sortedBanners[0];
+  const apiSmall = sortedBanners.slice(1, 3);
+
+  const largeBanner = apiLarge
+    ? {
+        id: apiLarge.id,
+        title: apiLarge.name,
+        subtitle: apiLarge.description,
+        discount: extractDiscount(apiLarge.description),
+        image: apiLarge.image,
+        buttonText: apiLarge.buttonText, // API abhi ye field nahi deti, undefined rahega
+        link: apiLarge.link,
+      }
+    : {
+        id: "fallback-large",
+        title: "Summer Collection",
+        subtitle: "Up to 50% OFF",
+        discount: "70",
+        image: "/img7.jfif",
+        buttonText: "Shop Now",
+      };
 
   const smallBanners =
-    banners.filter((b) => b.position === "small").length > 0
-      ? banners.filter((b) => b.position === "small")
+    apiSmall.length > 0
+      ? apiSmall.map((b) => ({
+          id: b.id,
+          title: b.name,
+          subtitle: b.description,
+          discount: extractDiscount(b.description),
+          image: b.image,
+        }))
       : [
           {
             id: "fallback-small-1",
-            title: "New Arrival",
+            title: "Latest Arrival",
             subtitle: "Dress, Pouch, Hat, Sandals",
             discount: "40",
             image: "/stylo.jfif",
           },
           {
             id: "fallback-small-2",
-            title: "Exclusive Deals",
+            title: " Deals",
             image: "/watch.jpg",
           },
         ];
@@ -62,7 +94,7 @@ async function Banners() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* Left Big Banner */}
-        <div className="lg:col-span-7 relative rounded-2xl overflow-hidden shadow-md h-[300px] sm:h-[415px] flex flex-col justify-end p-6 sm:p-8 bg-stone-300">
+        <div className="lg:col-span-6 relative rounded-2xl overflow-hidden shadow-md h-[300px] sm:h-[415px] flex flex-col justify-end p-6 sm:p-8 bg-stone-300">
           <div className="absolute inset-0 z-0">
             <Image
               src={getImageUrl(largeBanner.image)}
@@ -98,13 +130,13 @@ async function Banners() {
           {largeBanner.discount && (
             <div className="absolute bottom-6 right-6 z-10 bg-stone-200/80 backdrop-blur-sm px-3 py-1.5 rounded-xl text-center">
               <span className="block text-[10px] uppercase font-bold text-gray-600">Up to</span>
-              <span className="block text-lg font-black text-gray-900">{largeBanner.discount}</span>
+              <span className="block text-lg font-black text-gray-900">{largeBanner.discount}%</span>
             </div>
           )}
         </div>
 
         {/* Right Side Stacked Banners */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
+        <div className="lg:col-span-6 flex flex-col gap-4">
           {smallBanners.slice(0, 2).map((banner, index) => (
             <div
               key={banner.id}
@@ -137,7 +169,7 @@ async function Banners() {
               {index === 1 && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
                   <span className="text-[100px] sm:text-[120px] font-black tracking-widest text-white">
-                    SALE
+                    {/* SALE */}
                   </span>
                 </div>
               )}
