@@ -17,6 +17,10 @@ function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Cancel order ke liye alag states
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+
   // Helper Image URL Formatter for Order Items
   const getProductImage = (item) => {
     // Pehle product.images array me se is_main:1 wali image dhoondo,
@@ -116,6 +120,58 @@ function OrderDetail() {
 
     fetchOrderDetail();
   }, [id]);
+
+  // Cancel Order Handler
+  const handleCancelOrder = async () => {
+    const confirmCancel = window.confirm(
+      "Kya aap wakai is order ko cancel karna chahte hain?"
+    );
+    if (!confirmCancel) return;
+
+    const userId = localStorage.getItem("userId");
+    const token = localStorage.getItem("token");
+
+    try {
+      setCancelling(true);
+      setCancelError(null);
+
+      const url = `${API_BASE_URL}/cancel-order/${id}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result?.success === false) {
+        throw new Error(result?.message || "Order cancel nahi ho saka");
+      }
+
+      // UI me order status ko turant "Cancelled" update kar dein
+      setOrderData((prev) => ({
+        ...prev,
+        status: "Cancelled",
+      }));
+
+      alert("Order successfully cancel ho gaya.");
+    } catch (err) {
+      console.error("Error cancelling order:", err);
+      setCancelError(err.message);
+      alert(`Order cancel karte waqt error aayi: ${err.message}`);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -247,15 +303,23 @@ function OrderDetail() {
           {orderData.status?.toLowerCase() === "pending" && (
             <div className="flex justify-end">
               <button
-                onClick={() => {
-                  // TODO: yahan apna cancel order API call add karein
-                  console.log("Cancel order clicked for id:", id);
-                }}
-                className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+                className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm cursor-pointer"
               >
-                &times; Cancel Order
+                {cancelling ? (
+                  "Cancelling..."
+                ) : (
+                  <>
+                    &times; Cancel Order
+                  </>
+                )}
               </button>
             </div>
+          )}
+
+          {cancelError && (
+            <p className="text-xs text-rose-600 text-right">{cancelError}</p>
           )}
         </div>
 
