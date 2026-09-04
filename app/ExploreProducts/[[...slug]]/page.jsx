@@ -1,73 +1,28 @@
-'use client';
+import ExploreProducts from "./ExploreProducts";
+import { API_BASE_URL } from "@/lib/config";
 
-import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
-import { FaArrowLeft, FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
-
-
-// Shimmer Loader for the Shop Page
-const ShopShimmer = () => {
-    return (
-        <div className="bg-gray-50 min-h-screen py-8">
-            <div className="max-w-7xl mx-auto px-4">
-                <div className="text-center mb-10">
-                    <div className="w-64 h-8 bg-gray-200 mx-auto rounded mb-3"></div>
-                    <div className="w-96 h-4 bg-gray-200 mx-auto rounded"></div>
-                </div>
-                <div className="flex flex-col lg:flex-row gap-8">
-                    <div className="w-full lg:w-1/5 bg-white p-5 rounded-xl shadow h-96"></div>
-                    <div className="w-full lg:w-4/5">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 ">
-                            <div className="w-24 h-5 bg-gray-200 rounded"></div>
-                            <div className="w-36 h-9 bg-gray-200 rounded-lg"></div>
-                        </div>
-                        <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-2.5">
-                            {[...Array(10)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm"
-                                >
-                                    <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse">
-                                        <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 h-4 sm:h-5 w-14 sm:w-20 bg-gray-300 rounded animate-pulse" />
-                                        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-6 h-6 sm:w-8 sm:h-8 bg-gray-300 rounded-full animate-pulse" />
-                                    </div>
-
-                                    <div className="p-2 sm:p-3 flex flex-col">
-                                        <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded animate-pulse" />
-                                        <div className="h-3 w-full bg-gray-200 rounded mt-1.5 animate-pulse" />
-
-                                        <div className="flex items-center gap-1 mt-1.5 sm:mt-2">
-                                            {Array.from({ length: 5 }).map((_, star) => (
-                                                <div
-                                                    key={star}
-                                                    className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded-sm animate-pulse"
-                                                />
-                                            ))}
-                                            <div className="h-3 w-7 bg-gray-200 rounded ml-1 animate-pulse" />
-                                        </div>
-
-                                        <div className="flex items-start justify-between gap-1 mt-2">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="h-4 sm:h-5 w-16 sm:w-20 bg-gray-200 rounded animate-pulse" />
-                                                <div className="h-3 w-12 sm:w-16 bg-gray-200 rounded animate-pulse" />
-                                            </div>
-                                            <div className="h-5 sm:h-6 w-16 sm:w-20 bg-gray-200 rounded-full animate-pulse" />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+// Walks the category tree to find the node matching `slug`, at any depth.
+const findNodeBySlug = (categories, slug) => {
+    for (const cat of categories || []) {
+        if (cat.slug === slug) return cat;
+        const children = cat.all_children || cat.children || [];
+        if (children.length > 0) {
+            const found = findNodeBySlug(children, slug);
+            if (found) return found;
+        }
+    }
+    return null;
 };
 
-const SORT_OPTIONS = ['Latest Arrivals', 'Price: Low to High', 'Price: High to Low'];
+/**
+ * Runs on the SERVER before the page is sent to the browser — this is what
+ * lets search engines and shared-link previews see the correct title, and
+ * avoids the "flash of generic title" you'd get from setting document.title
+ * client-side after the page has already loaded.
+ */
+export async function generateMetadata({ params }) {
+    const { slug } = await params;
+    const pathSegments = slug || [];
 
 const ExploreProducts = () => {
     const params = useParams();
@@ -331,47 +286,27 @@ const ExploreProducts = () => {
         return <ShopShimmer />;
     }
 
-    return (
-        <div className="bg-gray-50 min-h-screen py-8">
-            <div className="max-w-7xl mx-auto px-4">
-                {/* HEADER SECTION */}
-                <div className="text-center mb-5">
-                    <h1 className="text-2xl sm:text-2xl font-extrabold text-gray-900 flex items-center justify-center gap-2">
-                        <span>🛍️</span> Explore Our Products
-                    </h1>
-                    <p className="text-gray-500 text-sm mt-2 max-w-xl mx-auto">
-                        Discover the best products from multiple categories. Use filters to find exactly what you want.
-                    </p>
-                </div>
+    try {
+        const categoryPath = pathSegments.join('/');
+        const currentSlug = pathSegments[pathSegments.length - 1];
 
-                <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    {/* LEFT SIDEBAR */}
-                    <aside className="w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:block sticky top-12 max-h-[calc(100vh-4rem)] overflow-y-auto space-y-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <h2 className="font-bold text-sm tracking-tight text-gray-900">
-                                <span>Categories</span>
-                            </h2>
-                            {hasActiveFilters && (
-                                <button
-                                    type="button"
-                                    onClick={handleClearFilters}
-                                    className="text-[11px] font-semibold text-red-600 hover:text-red-800 transition underline cursor-pointer bg-transparent border-none p-0"
-                                >
-                                    Clear Filters
-                                </button>
-                            )}
-                        </div>
+        const res = await fetch(`${API_BASE_URL}/api/category-sidebar/${categoryPath}`, {
+            next: { revalidate: 60 },
+        });
+        const data = await res.json();
+        const node = findNodeBySlug(data?.categories, currentSlug);
 
-                        <div className="flex flex-col gap-2 pb-2">
-                            {selectedCategory && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleCategoryClick('')}
-                                    className="text-xs text-emerald-600 font-semibold mb-1 flex items-center gap-1 hover:underline cursor-pointer text-left bg-transparent border-none p-0"
-                                >
-                                    <FaArrowLeft /> All Categories
-                                </button>
-                            )}
+        return {
+            title: node?.name ? `${node.name} Products | ShopNest` : "Explore Products | ShopNest",
+            description: node?.name
+                ? `Filter and shop ${node.name} products by price, color, size, and brand on ShopNest.`
+                : "Browse and filter all products on ShopNest.",
+        };
+    } catch (err) {
+        console.error("generateMetadata (ExploreProducts) error:", err);
+        return { title: "Explore Products | ShopNest" };
+    }
+}
 
                             {sidebarDisplayCategories.map((parentCat) => {
                                 const isParentSelected = selectedCategory === parentCat.slug;
