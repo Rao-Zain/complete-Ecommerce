@@ -47,15 +47,10 @@ function Handpicked() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
 
-  // Missing Refs Restored
   const fetchedPages = useRef(new Set());
   const loaderRef = useRef(null);
   const observerRef = useRef(null);
 
-  // Mirrors of state that the IntersectionObserver callback reads. The
-  // callback is created ONCE (see the observer effect below) so it can't
-  // rely on state values from the render it was created in — it needs a
-  // ref to always see the latest value.
   const hasMoreRef = useRef(true);
   const fetchingRef = useRef(false);
 
@@ -63,10 +58,8 @@ function Handpicked() {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
-  // Wishlist state — synced with localStorage "wishlist" key (same key Navbar/Wishlist use)
   const [wishlistIds, setWishlistIds] = useState([]);
 
-  // Safely read + clean auth token from localStorage
   const getAuthToken = () => {
     if (typeof window === "undefined") return null;
     let rawToken = localStorage.getItem("token");
@@ -78,7 +71,6 @@ function Handpicked() {
     return rawToken;
   };
 
-  // Load current wishlist ids on mount + keep in sync if changed elsewhere
   useEffect(() => {
     const loadWishlist = () => {
       const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
@@ -94,8 +86,8 @@ function Handpicked() {
   }, []);
 
   const toggleWishlist = async (e, productId) => {
-    e.preventDefault();   // parent <Link> ko product detail page pe navigate hone se roke
-    e.stopPropagation();  // click event upar Link tak bubble na ho
+    e.preventDefault();
+    e.stopPropagation();
 
     const userId = localStorage.getItem("userId");
     const token = getAuthToken();
@@ -113,12 +105,10 @@ function Handpicked() {
       ? wishlistIds.filter((id) => id !== numericProductId)
       : [...wishlistIds, numericProductId];
 
-    // 1. UI + localStorage turant update (heart fill + navbar counter dono automatically sync ho jate hain is event se)
     setWishlistIds(updated);
     localStorage.setItem("wishlist", JSON.stringify(updated));
     window.dispatchEvent(new Event("wishlistUpdated"));
 
-    // 2. Backend ko toggle bhejo — Authorization header zaroori hai warna 401 aata hai
     try {
       const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
         method: "POST",
@@ -141,14 +131,12 @@ function Handpicked() {
       }
     } catch (err) {
       console.error("Wishlist toggle error:", err);
-      // Rollback on failure
       setWishlistIds(wishlistIds);
       localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
       window.dispatchEvent(new Event("wishlistUpdated"));
     }
   };
 
-  // Fetching Products Callback
   const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
     if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
     fetchedPages.current.add(pageToFetch);
@@ -206,22 +194,10 @@ function Handpicked() {
     }
   }, []);
 
-  // Initial load — first page
   useEffect(() => {
     fetchProducts(page, page === 1);
   }, [page, fetchProducts]);
 
-  // Infinite scroll: ONE IntersectionObserver for the component's whole
-  // lifetime (created only after the initial load finishes, then never
-  // recreated). This is the fix for "hits the API multiple times":
-  // previously the observer was recreated whenever `hasMore`/`loadingMore`
-  // changed, and a brand-new IntersectionObserver fires its callback
-  // immediately if the target is already on-screen — so the instant one
-  // fetch finished (loadingMore -> false) a fresh observer would fire
-  // again right away, even though the user hadn't scrolled any further.
-  // Reading `hasMoreRef`/`fetchingRef` inside the callback instead of
-  // capturing `hasMore`/`loadingMore` lets a single long-lived observer
-  // always act on the latest state without needing to be rebuilt.
   useEffect(() => {
     if (initialLoading || observerRef.current) return;
     const currentLoader = loaderRef.current;
@@ -311,9 +287,11 @@ function Handpicked() {
                 <Link
                   href={`/Productdetail/${product.slug}`}
                   key={product.id}
-                  className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between h-full w-full"
+                  // ⬇️ "group" class add ki — is se andar wale image pe group-hover kaam karega
+                  className="group bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between h-full w-full"
                 >
-                  <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full">
+                  {/* ⬇️ image container pe overflow-hidden zaroori hai warna zoomed image bahar nikal jayegi */}
+                  <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
                     {product.product_type === "featured" && (
                       <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-yellow-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
                         Featured
@@ -347,7 +325,8 @@ function Handpicked() {
                         fill
                         unoptimized
                         sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                        className="object-cover object-center"
+                        // ⬇️ zoom transition yahan lagi hai
+                        className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
                       />
                     )}
                   </div>
@@ -415,9 +394,6 @@ function Handpicked() {
               );
             })}
 
-            {/* Shimmer placeholders for the page currently being fetched —
-                rendered inside the SAME grid so they line up like real
-                cards instead of a spinner below the grid. */}
             {loadingMore &&
               Array.from({ length: PER_PAGE }).map((_, i) => (
                 <SkeletonCard key={`skeleton-${i}`} />
@@ -425,7 +401,6 @@ function Handpicked() {
           </div>
         )}
 
-        {/* Sentinel — observed by the single IntersectionObserver above */}
         {!initialLoading && products.length > 0 && (
           <div ref={loaderRef} className="w-full h-4" />
         )}

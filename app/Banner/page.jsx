@@ -3,7 +3,7 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 async function getBanners() {
   try {
-    const res = await fetch(`${API_BASE_URL}/banner/main`, {
+    const res = await fetch(`${API_BASE_URL}/api/banner/main`, {
       // har 60 seconds baad revalidate ho, ya cache: 'no-store' bhi kar sakte hain
       next: { revalidate: 60 },
     });
@@ -18,36 +18,68 @@ async function getBanners() {
   }
 }
 
-async function Banners() {
-  const banners = await getBanners();
+// API se "40% OFF (ya sirf 40%)" jaisi string se number nikaalne ka helper
+function extractDiscount(text) {
+  if (!text) return null;
+  const match = text.match(/(\d+)\s*%/);
+  return match ? `${match[1]}%` : null;
+}
 
-  // API se data na aaye tou fallback static banners use ho jayen
-  const largeBanner = banners.find((b) => b.position === "large") ?? {
+async function Banners() {
+  const rawBanners = await getBanners();
+
+  // sort_order k hisaab se sort — sabse pehla banner = large, agle do = small
+  const banners = [...rawBanners].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
+
+  const fallbackLarge = {
     id: "fallback-large",
     title: "Summer Collection",
     subtitle: "Up to 50% OFF",
     discount: "70%",
-    image: "/img7.jfif",
+    image: "/banners/1788430154_1721825256.png",
     buttonText: "Shop Now",
   };
 
+  const fallbackSmall = [
+    {
+      id: "fallback-small-1",
+      title: "New Arrival",
+      subtitle: "Dress, Pouch, Hat, Sandals",
+      discount: "40",
+      image: "/banners/1788430203_1721825245.png",
+    },
+    {
+      id: "fallback-small-2",
+      title: "Exclusive Deals",
+      image: "/banners/1788430306_1721825269.png",
+    },
+  ];
+
+  // API field names (name/description) ko component ke expected shape (title/subtitle) mein map karo
+  const largeBanner = banners[0]
+    ? {
+        id: banners[0].id,
+        title: banners[0].name,
+        subtitle: banners[0].description,
+        discount: extractDiscount(banners[0].description),
+        image: banners[0].image,
+        buttonText: banners[0].buttonText ?? null,
+        link: banners[0].link ?? null,
+      }
+    : fallbackLarge;
+
   const smallBanners =
-    banners.filter((b) => b.position === "small").length > 0
-      ? banners.filter((b) => b.position === "small")
-      : [
-          {
-            id: "fallback-small-1",
-            title: "New Arrival",
-            subtitle: "Dress, Pouch, Hat, Sandals",
-            discount: "40",
-            image: "/stylo.jfif",
-          },
-          {
-            id: "fallback-small-2",
-            title: "Exclusive Deals",
-            image: "/watch.jpg",
-          },
-        ];
+    banners.length > 1
+      ? banners.slice(1, 3).map((b) => ({
+          id: b.id,
+          title: b.name,
+          subtitle: b.description,
+          discount: extractDiscount(b.description),
+          image: b.image,
+        }))
+      : fallbackSmall;
 
   // Image path build karne ka helper — agar image already full URL hai tou wahi use ho,
   // warna IMAGE_BASE_URL k sath jor dein
@@ -146,7 +178,7 @@ async function Banners() {
                 <h3 className="text-white font-bold text-lg">{banner.title}</h3>
                 {banner.discount && (
                   <span className="text-white font-black text-4xl sm:text-5xl tracking-tighter">
-                    {banner.discount}%
+                    {banner.discount}
                   </span>
                 )}
               </div>

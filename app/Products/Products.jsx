@@ -133,18 +133,12 @@ function Products() {
     }
   }, []);
 
-  // ↓↓↓ ADD THESE TWO EFFECTS ↓↓↓
-
-  // Fires the very first fetch on mount — this call was missing entirely,
-  // which is why initialLoading never left `true` and you only saw skeletons.
+  // Fires the very first fetch on mount
   useEffect(() => {
     fetchProducts(1, true);
   }, [fetchProducts]);
 
-  // Sets up the IntersectionObserver that drives infinite scroll. It waits
-  // until initialLoading is false, because the sentinel <div ref={loaderRef}>
-  // only exists in the DOM after the first page has rendered — observing a
-  // null ref does nothing.
+  // Sets up the IntersectionObserver that drives infinite scroll.
   useEffect(() => {
     if (initialLoading || !loaderRef.current) return;
 
@@ -168,8 +162,6 @@ function Products() {
     return () => observer.disconnect();
   }, [initialLoading, fetchProducts]);
 
-  // ↑↑↑ END OF ADDED CODE ↑↑↑
-
   // Load current wishlist ids on mount + keep in sync if changed elsewhere
   useEffect(() => {
     const loadWishlist = () => {
@@ -185,7 +177,10 @@ function Products() {
     };
   }, []);
 
-  const toggleWishlist = async (productId) => {
+  const toggleWishlist = async (e, productId) => {
+    e.preventDefault();   // parent <Link> ko product detail page pe navigate hone se roke
+    e.stopPropagation();  // click event upar Link tak bubble na ho
+
     const userId = localStorage.getItem("userId");
     const token = getAuthToken();
 
@@ -292,23 +287,36 @@ function Products() {
 
               const imagePath = product.main_variant_image?.image_path;
 
+              // naya: is product ka wishlist status
+              const isWishlisted = wishlistIds.includes(Number(product.id));
+
               return (
                 <Link
                   href={`/Productdetail/${product.slug}`}
                   key={product.id}
-                  className="bg-white rounded-lg sm:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+                  className="group bg-white rounded-lg sm:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between cursor-pointer"
                 >
                   <div>
                     {/* Image & Badges Container */}
-                    <div className="relative bg-gray-100 lg:h-56 xs:h-36 sm:h-44 md:h-48 w-full">
+                    {/* ⬇️ overflow-hidden add kiya taake zoomed image apni box se bahar na nikle */}
+                    <div className="relative bg-gray-100 lg:h-56 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                        }}
+                        onClick={(e) => toggleWishlist(e, product.id)}
                         className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white p-1 sm:p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
+                        title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                       >
-                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        <svg
+                          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                            isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
+                          }`}
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                          />
                         </svg>
                       </button>
 
@@ -320,7 +328,8 @@ function Products() {
                             fill
                             unoptimized
                             sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                            className="object-cover object-center"
+                            // ⬇️ zoom transition yahan lagi hai
+                            className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
                           />
                         )}
                       </div>

@@ -238,19 +238,21 @@ const CategoriesPage = () => {
                                                     <Link
                                                         key={topCat.id}
                                                         href={href}
-                                                        className="group bg-white rounded-xl p-3 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col items-center text-center"
+                                                        className="category-card bg-white rounded-xl p-3 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col items-center text-center"
                                                     >
                                                         <div className="w-40 h-40 bg-gray-100 rounded-lg overflow-hidden mb-2">
                                                             <img
                                                                 src={`${IMAGE_BASE_URL}/cat_image/${topCat.image}`}
                                                                 alt={topCat.name}
-                                                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                                                className="category-card-img w-full h-full object-cover transition-transform duration-300"
                                                             />
                                                         </div>
                                                         <h4 className="font-semibold text-xs sm:text-sm text-gray-800 transition-colors line-clamp-1">
                                                             {topCat.name}
                                                         </h4>
                                                     </Link>
+
+
                                                 );
                                             })}
                                         </div>

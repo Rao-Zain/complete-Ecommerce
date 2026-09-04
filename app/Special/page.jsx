@@ -3,7 +3,7 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 async function getFeaturedBanner() {
   try {
-    const res = await fetch(`${API_BASE_URL}/banner/featured`, {
+    const res = await fetch(`${API_BASE_URL}/api/banner/featured`, {
       next: { revalidate: 60 },
     });
 

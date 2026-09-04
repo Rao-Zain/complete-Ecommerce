@@ -189,14 +189,16 @@ function Featured() {
                  <Link
                   href={`/Productdetail/${product.slug}`}
                   key={product.id}
-                  className="bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
+                  // ⬇️ "group" class add ki — is se andar wale image pe group-hover kaam karega
+                  className="group bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
                 >
                   <div
                     key={product.id}
                     className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between"
                   >
                     {/* Image & Badges Container */}
-                    <div className="relative bg-gray-100 lg:h-52 xs:h-36 sm:h-44 md:h-48  w-full">
+                    {/* ⬇️ overflow-hidden add kiya taake zoomed image apni box se bahar na nikle */}
+                    <div className="relative bg-gray-100 lg:h-52 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
                       {product.product_type === "featured" && (
                         <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-yellow-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
                           Featured
@@ -232,7 +234,8 @@ function Featured() {
                           fill
                           unoptimized
                           sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                          className="object-cover object-center"
+                          // ⬇️ zoom transition yahan lagi hai
+                          className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
                         />
                       )}
                     </div>

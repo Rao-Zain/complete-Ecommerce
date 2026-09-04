@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { IMAGE_BASE_URL } from "@/lib/config";
@@ -7,6 +10,8 @@ import { IMAGE_BASE_URL } from "@/lib/config";
  * /ExploreProducts so both pages render identical product tiles.
  */
 const ProductCard = ({ product }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
     const firstVariant = product.variants?.[0];
     const price = firstVariant ? Number(firstVariant.price) : null;
     const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
@@ -25,10 +30,12 @@ const ProductCard = ({ product }) => {
     return (
         <Link
             href={`/Productdetail/${product.slug}`}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className="bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full w-full"
         >
             <div className="bg-white rounded-lg sm:rounded-md border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
-                <div className="relative bg-gray-100 h-34 xs:h-36 sm:h-44 md:h-48 lg:h-52 w-full">
+                <div className="relative bg-gray-100 h-34 xs:h-36 sm:h-44 md:h-48 lg:h-52 w-full overflow-hidden">
                     {product.product_type === "featured" && (
                         <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-red-600 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
                             Top Seller
@@ -54,13 +61,17 @@ const ProductCard = ({ product }) => {
                             unoptimized
                             sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                             className="object-cover object-center"
+                            style={{
+                                transform: isHovered ? "scale(1.08)" : "scale(1)",
+                                transition: "transform 300ms ease-out",
+                            }}
                         />
                     )}
                 </div>
 
                 <div className="p-2 sm:p-3 flex flex-col flex-grow justify-between">
                     <div>
-                        <h4 className="font-medium xs:text-[14px] md:text-[16px] text-gray-800 truncate group-hover:text-black capitalize">
+                        <h4 className="font-medium xs:text-[14px] md:text-[16px] text-gray-800 truncate capitalize">
                             {product.name}
                         </h4>
                         <p

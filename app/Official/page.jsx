@@ -2,7 +2,7 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 async function getBrandBanner() {
   try {
-    const res = await fetch(`${API_BASE_URL}/banner/brand`, {
+    const res = await fetch(`${API_BASE_URL}/api/banner/brand`, {
       next: { revalidate: 60 },
     });
 
