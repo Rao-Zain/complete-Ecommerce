@@ -1,141 +1,16 @@
-"use client";
+import OrderDetail from "./OrderDetail.jsx";
+import { API_BASE_URL } from "@/lib/config";
 
-import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
-import Swal from "sweetalert2"; // ⬅️ naya import
-
-const defaultPic = "/default.jpg";
-
-function OrderDetail() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params?.id;
-
-  const [orderData, setOrderData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState(null);
-
-  const getProductImage = (item) => {
-    const mainImage =
-      item?.product?.images?.find((img) => img.is_main === 1) ||
-      item?.product?.images?.[0];
-
-    let path =
-      item?.image_path ||
-      item?.image ||
-      mainImage?.image_path ||
-      item?.product?.image_path ||
-      item?.product?.image ||
-      item?.product?.thumbnail;
-
-    if (!path) return defaultPic;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    return `${IMAGE_BASE_URL}/${cleanPath}`;
-  };
-
-  useEffect(() => {
-    if (!id) return;
-
-    const userId = localStorage.getItem("userId");
-    const token = localStorage.getItem("token");
-
-    const fetchOrderDetail = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const url = `${API_BASE_URL}/api/orders-detail/${id}?user_id=${userId}`;
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Server returned status ${response.status}`);
-        }
-
-        const result = await response.json();
-        const matchedOrder = result.data || result.order || result;
-
-        if (!matchedOrder) {
-          throw new Error("Order data not found in response");
-        }
-
-        const formattedOrder = {
-          orderId: matchedOrder.order_number || matchedOrder.id || id,
-          placedDate: matchedOrder.created_at
-            ? `Placed on ${new Date(matchedOrder.created_at).toLocaleString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`
-            : "Recent",
-          status: matchedOrder.status
-            ? matchedOrder.status.charAt(0).toUpperCase() + matchedOrder.status.slice(1)
-            : "Pending",
-          items: (matchedOrder.items || []).map((item) => ({
-            id: item.id,
-            name: item.product?.name || item.product_name || item.name || "Product Item",
-            color: item.color || item.variant?.color || "Standard",
-            size: item.size || item.variant?.size || "N/A",
-            quantity: item.quantity || 1,
-            priceEach: `Rs ${item.price || 0}`,
-            totalPrice: `Rs ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
-            image: getProductImage(item),
-            reviewed: item.reviewed || false,
-          })),
-          grandTotal: `Rs ${matchedOrder.total || matchedOrder.grand_total || 0}`,
-        };
-
-        setOrderData(formattedOrder);
-      } catch (err) {
-        console.error("Error fetching order detail:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrderDetail();
-  }, [id]);
-
-  // ⬇️ Cancel Order Handler — ab SweetAlert2 ke sath
-  const handleCancelOrder = async () => {
-    const confirmResult = await Swal.fire({
-      title: "Cancel Order?",
-      text: "Are you sure you want to cancel this order? This action can be reversed.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#f43f5e",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, cancel it!",
-      cancelButtonText: "No, keep it",
-      reverseButtons: true,
-    });
-
-    if (!confirmResult.isConfirmed) return;
-
-    const userId = localStorage.getItem("userId");
-    const token = localStorage.getItem("token");
+export async function generateMetadata({ params }) {
+    const { id } = await params;
 
     try {
-      setCancelling(true);
-      setCancelError(null);
+        const res = await fetch(`${API_BASE_URL}/api/orders-detail/${id}`, {
+            headers: { Accept: "application/json" },
+        });
+        const data = await res.json();
+        const order = data?.data || data?.order || data;
+        const orderNumber = order?.order_number || id;
 
       const url = `${API_BASE_URL}/api/cancel-order/${id}`;
 
@@ -344,4 +219,6 @@ function OrderDetail() {
   );
 }
 
-export default OrderDetail;
+export default function Page() {
+    return <OrderDetail />;
+}

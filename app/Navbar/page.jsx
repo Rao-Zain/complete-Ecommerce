@@ -21,12 +21,15 @@ import {
   FaHome,
   FaShoppingBag
 } from "react-icons/fa";
-
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { API_BASE_URL } from "@/lib/config";
 
 const Navbar = () => {
   const router = useRouter();
-
+  const [storeSettings, setStoreSettings] = useState(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
 
@@ -89,6 +92,28 @@ const Navbar = () => {
     };
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const fetchStoreSettings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/admin-store`);
+        const json = await res.json();
+        if (json?.success && json?.data) {
+          setStoreSettings(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load store settings:", err);
+      }
+    };
+    fetchStoreSettings();
+  }, []);
+
+  const getStoreLogoUrl = (logoPath) => {
+    if (!logoPath) return null;
+    if (logoPath.startsWith("http://") || logoPath.startsWith("https://")) return logoPath;
+    const cleanPath = logoPath.startsWith("/") ? logoPath.slice(1) : logoPath;
+    return `${API_BASE_URL}/storage/${cleanPath}`;
+  };
 
   // Load User & Auth state
   useEffect(() => {
@@ -382,25 +407,32 @@ const Navbar = () => {
 
             <Link
               href="/"
-              className="flex items-center gap-2 group flex-shrink-0"
+              className="flex items-center gap-1.5 hover:opacity-90 transition-opacity flex-shrink-0"
               onClick={closeMobileMenu}
             >
-              <Image
-                src="/logo (9).png"
-                alt="ShopNest Logo"
-                width={280}
-                height={180}
-                className="h-28  w-auto object-contain"
-                priority
-              />
+              {storeSettings?.is_logo && getStoreLogoUrl(storeSettings.logo) ? (
+                <img
+                  src={getStoreLogoUrl(storeSettings.logo)}
+                  alt={storeSettings.title || "Store Logo"}
+                  className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
+                />
+              ) : (
+                <Image
+                  src="/logo (9).png"
+                  alt="ShopNest Logo"
+                  width={280}
+                  height={180}
+                  className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
+                  priority
+                />
+              )}
 
-              {/* <div>
-    <h2 className="font-extrabold text-xl md:text-2xl tracking-tight text-white leading-none">
-      Shop<span className="text-blue-500">Nest</span>
-    </h2>
-  </div> */}
+              {storeSettings?.is_title && storeSettings?.title && (
+                <span className="text-base sm:text-xl font-bold tracking-tight text-white">
+                  {storeSettings.title}
+                </span>
+              )}
             </Link>
-
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
               <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
                 <input
@@ -431,7 +463,7 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link href="/CartProduct" className="relative  hover:bg-gray-800 rounded-full transition text-white">
+              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
                 {cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
@@ -439,6 +471,7 @@ const Navbar = () => {
                   </span>
                 )}
               </Link>
+
 
               <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
@@ -560,10 +593,11 @@ const Navbar = () => {
           >
             <button
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="flex items-center gap-2.5 w-64 font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 px-5 h-12 transition cursor-pointer"
+              className="flex items-center gap-2.5 w-64 h-9 bg-gray-100 text-gray-800 hover:bg-gray-100 px-5 transition cursor-pointer"
             >
-              <FaBars className="text-sm" /> <span>All Categories</span>{" "}
-              <FaChevronDown className="text-xs text-gray-500 ml-auto " />
+              <FaBars className="text-sm" />
+              <span className="font-semibold text-sm text-gray-900">All Categories</span>
+              <FaChevronDown className="text-xs text-gray-500 ml-auto" />
             </button>
 
             {/* Categories Dropdown Panels */}
@@ -646,7 +680,7 @@ const Navbar = () => {
             {quickLinkCategories.map((cat) => (
               <Link
                 key={cat.id}
-                href={`/Categories/${cat.id}`}
+                href={`/Categories/${cat.slug}`}
                 className="hover:text-blue-600 transition whitespace-nowrap"
               >
                 {cat.name}
@@ -761,7 +795,7 @@ const Navbar = () => {
                       <div className="flex items-center justify-between">
                         <button
                           type="button"
-                          onClick={() => { closeMobileMenu(); router.push(`/Categories/${mainCat.id}`); }}
+                          onClick={() => { closeMobileMenu(); router.push(`/Categories/${mainCat.slug}`); }}
                           className="flex-1 text-left py-2 text-sm font-semibold text-gray-700 cursor-pointer"
                         >
                           {mainCat.name}
@@ -846,14 +880,24 @@ const Navbar = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:bg-white transition"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showLoginPassword ? "text" : "password"}
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-3 pr-11 focus:outline-none focus:border-blue-500 focus:bg-white transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showLoginPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -940,17 +984,27 @@ const Navbar = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.password
-                      ? "border-red-500 focus:border-red-500"
-                      : "border-gray-200 focus:border-blue-500"
-                      }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? "text" : "password"}
+                      required
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:bg-white transition ${regFieldErrors.password
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showRegPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                   {regFieldErrors.password && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.password}</p>
                   )}
@@ -958,17 +1012,27 @@ const Navbar = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={regConfirmPassword}
-                    onChange={(e) => setRegConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white transition ${regFieldErrors.password_confirmation
-                      ? "border-red-500 focus:border-red-500"
-                      : "border-gray-200 focus:border-blue-500"
-                      }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegConfirmPassword ? "text" : "password"}
+                      required
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`w-full bg-gray-50 border text-gray-900 text-sm rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:bg-white transition ${regFieldErrors.password_confirmation
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:border-blue-500"
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegConfirmPassword((prev) => !prev)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+                      tabIndex={-1}
+                    >
+                      {showRegConfirmPassword ? <FaEyeSlash className="text-sm" /> : <FaEye className="text-sm" />}
+                    </button>
+                  </div>
                   {regFieldErrors.password_confirmation && (
                     <p className="text-red-500 text-xs mt-1">{regFieldErrors.password_confirmation}</p>
                   )}

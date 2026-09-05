@@ -18,29 +18,44 @@ async function getBanners() {
   }
 }
 
-// API se "40% OFF (ya sirf 40%)" jaisi string se number nikaalne ka helper
-function extractDiscount(text) {
-  if (!text) return null;
-  const match = text.match(/(\d+)\s*%/);
-  return match ? `${match[1]}%` : null;
+// API se "40% OFF" jaisi description string se sirf number nikalne k liye
+function extractDiscount(description) {
+  if (!description) return null;
+  const match = description.match(/(\d+)\s*%/);
+  return match ? match[1] : null;
 }
 
 async function Banners() {
   const rawBanners = await getBanners();
 
-  // sort_order k hisaab se sort — sabse pehla banner = large, agle do = small
-  const banners = [...rawBanners].sort(
+  // API response ko sort_order k hisab se sort kar dein taake order guaranteed rahe
+  const sortedBanners = [...rawBanners].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
-  const fallbackLarge = {
-    id: "fallback-large",
-    title: "Summer Collection",
-    subtitle: "Up to 50% OFF",
-    discount: "70%",
-    image: "/banners/1788430154_1721825256.png",
-    buttonText: "Shop Now",
-  };
+  // API koi "position" field nahi deti, is liye sort_order k basis par
+  // pehla banner "large" aur agle do "small" maan k chalte hain
+  const apiLarge = sortedBanners[0];
+  const apiSmall = sortedBanners.slice(1, 3);
+
+  const largeBanner = apiLarge
+    ? {
+        id: apiLarge.id,
+        title: apiLarge.name,
+        subtitle: apiLarge.description,
+        discount: extractDiscount(apiLarge.description),
+        image: apiLarge.image,
+        buttonText: apiLarge.buttonText, // API abhi ye field nahi deti, undefined rahega
+        link: apiLarge.link,
+      }
+    : {
+        id: "fallback-large",
+        title: "Summer Collection",
+        subtitle: "Up to 50% OFF",
+        discount: "70",
+        image: "/img7.jfif",
+        buttonText: "Shop Now",
+      };
 
   const fallbackSmall = [
     {
@@ -71,8 +86,8 @@ async function Banners() {
     : fallbackLarge;
 
   const smallBanners =
-    banners.length > 1
-      ? banners.slice(1, 3).map((b) => ({
+    apiSmall.length > 0
+      ? apiSmall.map((b) => ({
           id: b.id,
           title: b.name,
           subtitle: b.description,
@@ -94,7 +109,7 @@ async function Banners() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* Left Big Banner */}
-        <div className="lg:col-span-7 relative rounded-2xl overflow-hidden shadow-md h-[300px] sm:h-[415px] flex flex-col justify-end p-6 sm:p-8 bg-stone-300">
+        <div className="lg:col-span-6 relative rounded-2xl overflow-hidden shadow-md h-[300px] sm:h-[415px] flex flex-col justify-end p-6 sm:p-8 bg-stone-300">
           <div className="absolute inset-0 z-0">
             <Image
               src={getImageUrl(largeBanner.image)}
@@ -130,13 +145,13 @@ async function Banners() {
           {largeBanner.discount && (
             <div className="absolute bottom-6 right-6 z-10 bg-stone-200/80 backdrop-blur-sm px-3 py-1.5 rounded-xl text-center">
               <span className="block text-[10px] uppercase font-bold text-gray-600">Up to</span>
-              <span className="block text-lg font-black text-gray-900">{largeBanner.discount}</span>
+              <span className="block text-lg font-black text-gray-900">{largeBanner.discount}%</span>
             </div>
           )}
         </div>
 
         {/* Right Side Stacked Banners */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
+        <div className="lg:col-span-6 flex flex-col gap-4">
           {smallBanners.slice(0, 2).map((banner, index) => (
             <div
               key={banner.id}
@@ -169,7 +184,7 @@ async function Banners() {
               {index === 1 && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
                   <span className="text-[100px] sm:text-[120px] font-black tracking-widest text-white">
-                    SALE
+                    {/* SALE */}
                   </span>
                 </div>
               )}
