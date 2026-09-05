@@ -212,7 +212,7 @@ const FashionCategory = () => {
                 <div
                   className="relative w-full bg-cover bg-center rounded-2xl p-8 sm:p-12 mb-6 text-white shadow-lg overflow-hidden flex flex-col justify-center"
                   style={{
-                    backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('http://192.168.1.19:8000/storage/${currentCategory.image}')`,
+                    backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('${API_BASE_URL}/storage/${currentCategory.image})`,
                     minHeight: "200px",
                   }}
                 >

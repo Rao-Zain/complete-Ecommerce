@@ -9,7 +9,13 @@ import { useRouter } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 
-import { MdFlashOn, MdChevronLeft, MdChevronRight } from "react-icons/md";
+import {
+  MdFlashOn,
+  MdChevronLeft,
+  MdChevronRight,
+  MdDescription,
+  MdKeyboardArrowDown,
+} from "react-icons/md";
 
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import ProductReviews from "./ProductReviews";
@@ -22,7 +28,7 @@ import "swiper/css/navigation";
 export default function Productdetail() {
   const params = useParams();
   const slug = params.slug;
-const router = useRouter();
+  const router = useRouter();
   // =========================================================
   // STATE
   // =========================================================
@@ -42,6 +48,17 @@ const router = useRouter();
   // Active image
   const [activeImage, setActiveImage] = useState(0);
 
+  // Full description expand/collapse
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  // Measured height of the full description content, so we can
+  // animate max-height smoothly instead of an abrupt clamp toggle.
+  const descriptionRef = useRef(null);
+  const [descHeight, setDescHeight] = useState(0);
+
+  // Collapsed preview height in px (roughly a few lines of text).
+  const COLLAPSED_DESCRIPTION_HEIGHT = 110;
+
   // Main Swiper
   const mainSwiperRef = useRef(null);
 
@@ -54,6 +71,24 @@ const router = useRouter();
   // to Swiper via onBeforeInit instead.)
   const prevButtonRef = useRef(null);
   const nextButtonRef = useRef(null);
+
+  // =========================================================
+  // IMAGE ZOOM (magnifier)
+  // =========================================================
+
+  // How much the side panel magnifies the lens area. 2.2 means the
+  // lens shows a region that's displayed 2.2x larger in the panel.
+  const ZOOM_LEVEL = 2.2;
+
+  const zoomContainerRef = useRef(null);
+  const [isZooming, setIsZooming] = useState(false);
+  const [lensBox, setLensBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
+  const [zoomPane, setZoomPane] = useState({
+    width: 0,
+    height: 0,
+    backgroundSize: "0px 0px",
+    backgroundPosition: "0px 0px",
+  });
 
   // =========================================================
   // AUTH HEADERS
@@ -135,6 +170,9 @@ const router = useRouter();
         // Reset image
         setActiveImage(0);
 
+        // Reset description toggle for the new product
+        setShowFullDescription(false);
+
         // Set first variant
         if (p.variants?.length > 0) {
           setSelectedColor(p.variants[0].color_name);
@@ -156,6 +194,37 @@ const router = useRouter();
 
     fetchProduct();
   }, [slug]);
+
+  // =========================================================
+  // MEASURE FULL DESCRIPTION HEIGHT (for smooth expand/collapse)
+  // =========================================================
+
+  useEffect(() => {
+    if (!descriptionRef.current) return;
+
+    const measure = () => {
+      if (descriptionRef.current) {
+        setDescHeight(descriptionRef.current.scrollHeight);
+      }
+    };
+
+    measure();
+
+    // Images inside the description HTML don't have a height until
+    // they load, so re-measure once each one finishes loading —
+    // otherwise the expanded height would be measured too short.
+    const images = descriptionRef.current.querySelectorAll("img");
+
+    images.forEach((img) => {
+      if (!img.complete) {
+        img.addEventListener("load", measure);
+      }
+    });
+
+    return () => {
+      images.forEach((img) => img.removeEventListener("load", measure));
+    };
+  }, [product?.description]);
 
   // =========================================================
   // PRODUCT IMAGES
@@ -224,6 +293,62 @@ const router = useRouter();
   const avgRating = Number(product?.avg_rating ?? 0);
 
   const totalReviews = Number(product?.total_reviews ?? 0);
+
+  // =========================================================
+  // IMAGE ZOOM (magnifier) HANDLERS
+  // =========================================================
+
+  const updateZoom = (clientX, clientY) => {
+    const container = zoomContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+
+    const lensWidth = rect.width / ZOOM_LEVEL;
+    const lensHeight = rect.height / ZOOM_LEVEL;
+
+    const cursorX = clientX - rect.left;
+    const cursorY = clientY - rect.top;
+
+    // Clamp so the lens never travels outside the image bounds.
+    const lensLeft = Math.min(
+      Math.max(cursorX - lensWidth / 2, 0),
+      rect.width - lensWidth
+    );
+    const lensTop = Math.min(
+      Math.max(cursorY - lensHeight / 2, 0),
+      rect.height - lensHeight
+    );
+
+    setLensBox({ left: lensLeft, top: lensTop, width: lensWidth, height: lensHeight });
+
+    setZoomPane({
+      width: rect.width,
+      height: rect.height,
+      backgroundSize: `${rect.width * ZOOM_LEVEL}px ${rect.height * ZOOM_LEVEL}px`,
+      backgroundPosition: `-${lensLeft * ZOOM_LEVEL}px -${lensTop * ZOOM_LEVEL}px`,
+    });
+  };
+
+  const handleZoomEnter = (e) => {
+    // Only worth it when there's an image, and only on screens wide
+    // enough to actually show the side panel (matches the lg:block
+    // below), otherwise there'd be nothing to see.
+    if (productImages.length === 0) return;
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+
+    setIsZooming(true);
+    updateZoom(e.clientX, e.clientY);
+  };
+
+  const handleZoomMove = (e) => {
+    if (!isZooming) return;
+    updateZoom(e.clientX, e.clientY);
+  };
+
+  const handleZoomLeave = () => {
+    setIsZooming(false);
+  };
 
   // =========================================================
   // IMAGE CHANGE
@@ -369,65 +494,66 @@ const router = useRouter();
   // BUY NOW
   // =========================================================
 
- const [buyingNow, setBuyingNow] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
 
-const handleBuyNow = async () => {
-  const token = localStorage.getItem("token");
-  const userId = getUserId();
+  const handleBuyNow = async () => {
+    const token = localStorage.getItem("token");
+    const userId = getUserId();
 
-  if (!token) {
-    window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
-    return;
-  }
-
-  if (!userId || userId === "undefined" || userId === "null") {
-    toast.error("User information not found. Please log in again.");
-    return;
-  }
-
-  if (!activeVariant) {
-    toast.error("Please select a color and size.");
-    return;
-  }
-
-  if (Number(activeVariant.stock) < quantity) {
-    toast.error("Not enough stock available.");
-    return;
-  }
-
-  setBuyingNow(true);
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/add-to-cart`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        user_id: Number(userId),
-        product_id: product.id,
-        variant_id: activeVariant.id,
-        qty: quantity,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || data.status === false) {
-      throw new Error(data.message || "Failed to add product to cart");
+    if (!token) {
+      window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
+      return;
     }
 
-    // Let Navbar and any other cart-count listeners know — this is a
-    // real cart mutation now, so it should behave like Add to Cart.
-    window.dispatchEvent(new Event("cartUpdated"));
+    if (!userId || userId === "undefined" || userId === "null") {
+      toast.error("User information not found. Please log in again.");
+      return;
+    }
 
-    // Only navigate once the item is confirmed saved server-side.
-    router.push("/Checkout");
-  } catch (err) {
-    console.error("BUY NOW ERROR:", err);
-    toast.error(err instanceof Error ? err.message : "Something went wrong");
-  } finally {
-    setBuyingNow(false);
-  }
-};
+    if (!activeVariant) {
+      toast.error("Please select a color and size.");
+      return;
+    }
+
+    if (Number(activeVariant.stock) < quantity) {
+      toast.error("Not enough stock available.");
+      return;
+    }
+
+    setBuyingNow(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/add-to-cart`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          user_id: Number(userId),
+          product_id: product.id,
+          variant_id: activeVariant.id,
+          qty: quantity,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.status === false) {
+        throw new Error(data.message || "Failed to add product to cart");
+      }
+
+      // Let Navbar and any other cart-count listeners know — this is a
+      // real cart mutation now, so it should behave like Add to Cart.
+      window.dispatchEvent(new Event("cartUpdated"));
+
+      // Only navigate once the item is confirmed saved server-side.
+      router.push("/Checkout");
+    } catch (err) {
+      console.error("BUY NOW ERROR:", err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setBuyingNow(false);
+    }
+  };
+
   // =========================================================
   // LOADING
   // =========================================================
@@ -504,143 +630,185 @@ const handleBuyNow = async () => {
             PRODUCT SECTION
         ================================================== */}
 
-        <div className="g grid
+        <div className={`g grid
           grid-cols-1
           md:grid-cols-2
           lg:grid-cols-12
           gap-6
           sm:gap-8
           lg:gap-10
-          xl:gap-12">
+          xl:gap-12`}>
           {/* =================================================
               IMAGE AREA
           ================================================= */}
 
-          <section className="flex
+          <section className={`flex
             flex-col
             gap-3
             sm:gap-4
             md:col-span-1
             lg:col-span-5
-            min-w-0">
+            min-w-0`}>
 
 
-            <div className="relative
-              w-full
-              h-[300px]
-              sm:h-[380px]
-              md:h-[420px]
-              lg:h-[490px]
-              xl:h-[520px]
-              bg-gray-100
-              rounded-lg
-              sm:rounded-xl
-              overflow-hidden
-              border
-              border-gray-200
-              group">
-              {productImages.length > 0 ? (
-                <>
-                  <Swiper
-                    key={slug}
-                    modules={[Navigation]}
-                    onSwiper={(swiper) => {
-                      mainSwiperRef.current = swiper;
-                    }}
-                    onSlideChange={handleSlideChange}
-                    onBeforeInit={(swiper) => {
-                      // FIX: bind custom nav buttons to Swiper here.
-                      // This is the reliable way to wire navigation
-                      // in React — passing navigation={{ enabled: true }}
-                      // alone does not consistently render/attach buttons.
-                      swiper.params.navigation.prevEl = prevButtonRef.current;
-                      swiper.params.navigation.nextEl = nextButtonRef.current;
-                    }}
-                    navigation={{
-                      prevEl: prevButtonRef.current,
-                      nextEl: nextButtonRef.current,
-                    }}
-                    slidesPerView={1}
-                    spaceBetween={0}
-                    speed={450}
-                    grabCursor={true}
-                    allowTouchMove={true}
-                    loop={true}
-                    className="product-main-swiper w-full h-full"
-                  >
-                    {productImages.map((image, index) => (
-                      <SwiperSlide key={`${image}-${index}`}>
-                        <div className="relative w-full h-full flex items-center justify-center">
-                          <Image
-                            src={image}
-                            alt={`${product.name} image ${index + 1}`}
-                            fill
-                            unoptimized
-                            priority={index === 0}
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 50vw"
-                            className="object-cover"
-                          />
-                        </div>
-                      </SwiperSlide>
-                    ))}
-                  </Swiper>
+            {/* Outer wrapper has no overflow-hidden, so the zoom
+                pane (positioned just outside the image box) isn't
+                clipped by the image's own rounded-corner overflow. */}
+            <div className="relative">
+              <div
+                ref={zoomContainerRef}
+                onMouseEnter={handleZoomEnter}
+                onMouseMove={handleZoomMove}
+                onMouseLeave={handleZoomLeave}
+                className={`relative
+                w-full
+                h-[300px]
+                sm:h-[380px]
+                md:h-[420px]
+                lg:h-[490px]
+                xl:h-[520px]
+                bg-gray-100
+                rounded-lg
+                sm:rounded-xl
+                overflow-hidden
+                border
+                border-gray-200
+                group
+                lg:cursor-crosshair`}>
+                {productImages.length > 0 ? (
+                  <>
+                    <Swiper
+                      key={slug}
+                      modules={[Navigation]}
+                      onSwiper={(swiper) => {
+                        mainSwiperRef.current = swiper;
+                      }}
+                      onSlideChange={handleSlideChange}
+                      onBeforeInit={(swiper) => {
+                        // FIX: bind custom nav buttons to Swiper here.
+                        // This is the reliable way to wire navigation
+                        // in React — passing navigation={{ enabled: true }}
+                        // alone does not consistently render/attach buttons.
+                        swiper.params.navigation.prevEl = prevButtonRef.current;
+                        swiper.params.navigation.nextEl = nextButtonRef.current;
+                      }}
+                      navigation={{
+                        prevEl: prevButtonRef.current,
+                        nextEl: nextButtonRef.current,
+                      }}
+                      slidesPerView={1}
+                      spaceBetween={0}
+                      speed={450}
+                      grabCursor={true}
+                      allowTouchMove={true}
+                      loop={true}
+                      className="product-main-swiper w-full h-full"
+                    >
+                      {productImages.map((image, index) => (
+                        <SwiperSlide key={`${image}-${index}`}>
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            <Image
+                              src={image}
+                              alt={`${product.name} image ${index + 1}`}
+                              fill
+                              unoptimized
+                              priority={index === 0}
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 50vw"
+                              className="object-cover"
+                            />
+                          </div>
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
 
-                  {/* Custom nav buttons — only useful with 2+ images */}
-                  {productImages.length > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        ref={prevButtonRef}
-                        aria-label="Previous image"
-                        className="
-                          absolute left-2 top-1/2 -translate-y-1/2 z-10
-                          w-8 h-8 sm:w-10 sm:h-10
-                          flex items-center justify-center
-                          rounded-full bg-white/90 shadow-md
-                          text-gray-700 hover:bg-white
-                          opacity-0 group-hover:opacity-100
-                          sm:opacity-100
-                          transition-opacity
-                        "
-                      >
-                        <MdChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </button>
+                    {/* Custom nav buttons — only useful with 2+ images */}
+                    {productImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          ref={prevButtonRef}
+                          aria-label="Previous image"
+                          className={`
+                            absolute left-2 top-1/2 -translate-y-1/2 z-10
+                            w-8 h-8 sm:w-10 sm:h-10
+                            flex items-center justify-center
+                            rounded-full bg-white/90 shadow-md
+                            text-gray-700 hover:bg-white
+                            opacity-0 group-hover:opacity-100
+                            sm:opacity-100
+                            transition-opacity
+                          `}
+                        >
+                          <MdChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </button>
 
-                      <button
-                        type="button"
-                        ref={nextButtonRef}
-                        aria-label="Next image"
-                        className="
-                          absolute right-2 top-1/2 -translate-y-1/2 z-10
-                          w-8 h-8 sm:w-10 sm:h-10
-                          flex items-center justify-center
-                          rounded-full bg-white/90 shadow-md
-                          text-gray-700 hover:bg-white
-                          opacity-0 group-hover:opacity-100
-                          sm:opacity-100
-                          transition-opacity
-                        "
-                      >
-                        <MdChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">
-                    No image available
-                  </span>
-                </div>
+                        <button
+                          type="button"
+                          ref={nextButtonRef}
+                          aria-label="Next image"
+                          className={`
+                            absolute right-2 top-1/2 -translate-y-1/2 z-10
+                            w-8 h-8 sm:w-10 sm:h-10
+                            flex items-center justify-center
+                            rounded-full bg-white/90 shadow-md
+                            text-gray-700 hover:bg-white
+                            opacity-0 group-hover:opacity-100
+                            sm:opacity-100
+                            transition-opacity
+                          `}
+                        >
+                          <MdChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Lens — the highlighted square on the original
+                        image that shows which part is being magnified. */}
+                    {isZooming && (
+                      <div
+                        className="hidden lg:block absolute z-20 border-2 border-white bg-white/25 shadow-[0_0_0_1px_rgba(0,0,0,0.15)] pointer-events-none"
+                        style={{
+                          left: `${lensBox.left}px`,
+                          top: `${lensBox.top}px`,
+                          width: `${lensBox.width}px`,
+                          height: `${lensBox.height}px`,
+                        }}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-gray-400 text-sm">
+                      No image available
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Zoom pane — magnified view of whatever's under the
+                  lens, shown beside the image on large screens only. */}
+              {isZooming && productImages[activeImage] && (
+                <div
+                  className="hidden lg:block absolute top-0 left-full ml-4 z-30 rounded-lg border border-gray-200 shadow-xl bg-white overflow-hidden"
+                  style={{
+                    width: `${zoomPane.width}px`,
+                    height: `${zoomPane.height}px`,
+                    backgroundImage: `url(${productImages[activeImage]})`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: zoomPane.backgroundSize,
+                    backgroundPosition: zoomPane.backgroundPosition,
+                  }}
+                />
               )}
             </div>
+
 
             {/* ===============================================
                 THUMBNAILS
             =============================================== */}
 
             {productImages.length > 1 && (
-              <div className="flex
+              <div className={`flex
                 gap-2
                 sm:gap-3
                 overflow-x-auto
@@ -648,7 +816,7 @@ const handleBuyNow = async () => {
                 pb-2
                 px-1
                 scrollbar-thin
-                snap-x">
+                snap-x`}>
                 <Swiper
                   key={`thumbs-${slug}`}
                   onSwiper={(swiper) => {
@@ -664,13 +832,13 @@ const handleBuyNow = async () => {
                   {productImages.map((image, index) => (
                     <SwiperSlide
                       key={`thumb-${index}`}
-                      className="
+                      className={`
                         !w-[56px] !h-[56px]
                         sm:!w-[78px] sm:!h-[78px]
                         md:!w-[86px] md:!h-[86px]
                         lg:!w-[82px] lg:!h-[82px]
                         xl:!w-[90px] xl:!h-[90px]
-                      "
+                      `}
                       onClick={() => changeImage(index)}
                     >
                       <button
@@ -718,11 +886,11 @@ const handleBuyNow = async () => {
               PRODUCT INFORMATION
           ================================================= */}
 
-          <section className="flex
+          <section className={`flex
             flex-col
             min-w-0
             md:col-span-1
-            lg:col-span-7">
+            lg:col-span-7`}>
             {/* PRODUCT NAME */}
 
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 capitalize">
@@ -775,7 +943,11 @@ const handleBuyNow = async () => {
               </span>
             </div>
 
-            {/* DESCRIPTION */}
+            {/* SHORT DESCRIPTION (teaser, clamped to 2 lines) */}
+            {/* This is intentionally always clamped — it's just a
+                preview. The full description with images/headings
+                lives in the "Product Description" section below the
+                buttons, with its own show more / show less toggle. */}
 
             <div className="mt-5 sm:mt-4">
               <h2 className="text-sm sm:text-base font-semibold text-gray-800">
@@ -783,7 +955,7 @@ const handleBuyNow = async () => {
               </h2>
 
               <div
-                className="text-xs sm:text-sm text-gray-600 leading-6 break-words"
+                className="mt-1 text-xs sm:text-sm text-gray-600 leading-6 break-words line-clamp-2"
                 dangerouslySetInnerHTML={{
                   __html: product.description || "",
                 }}
@@ -835,14 +1007,14 @@ const handleBuyNow = async () => {
                       `}
                       >
                         {imageUrl && (
-                          <div className=" relative
+                          <div className={` relative
                           w-[26px]
                           h-[26px]
                           rounded
                           overflow-hidden
                           flex-shrink-0
                           border
-                          border-gray-200">
+                          border-gray-200`}>
                             <Image
                               src={imageUrl}
                               alt={color}
@@ -911,14 +1083,14 @@ const handleBuyNow = async () => {
                 Quantity
               </h3>
 
-              <div className="flex
+              <div className={`flex
                 items-center
                 border
                 border-gray-300
                 rounded-md
                 w-[110px]
                 h-10
-                overflow-hidden">
+                overflow-hidden`}>
                 <button
                   type="button"
                   onClick={handleDecrement}
@@ -948,11 +1120,11 @@ const handleBuyNow = async () => {
                 type="button"
                 onClick={handleAddToCart}
                 disabled={addingToCart || !activeVariant || stock === 0}
-                className="
+                className={`
                   w-full sm:w-[180px] h-11 rounded-md bg-black text-white
                   text-sm font-medium hover:bg-gray-800 cursor-pointer
                   disabled:opacity-50 disabled:cursor-not-allowed transition
-                "
+                `}
               >
                 {addingToCart ? "Adding..." : "Add To Cart"}
               </button>
@@ -961,19 +1133,151 @@ const handleBuyNow = async () => {
                 type="button"
                 onClick={handleBuyNow}
                 disabled={buyingNow || !activeVariant || stock === 0}
-                className="
+                className={`
     w-full sm:w-[180px] h-11 rounded-md bg-orange-600 text-white
     text-sm font-medium hover:bg-orange-700 cursor-pointer
     disabled:opacity-50 disabled:cursor-not-allowed transition
     flex items-center justify-center gap-1
-  "
+  `}
               >
                 <MdFlashOn className="w-5 h-5" />
-               {buyingNow ? "Processing..." : "Buy Now"}
+                {buyingNow ? "Processing..." : "Buy Now"}
               </button>
             </div>
           </section>
         </div>
+
+        {/* ==================================================
+            FULL PRODUCT DESCRIPTION (with images/headings/text)
+            Collapsed by default, expands on "Read Full Description".
+        ================================================== */}
+
+        <section className="mt-8 sm:mt-10 lg:mt-12">
+          <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-5 sm:p-6 lg:p-7">
+            {/* Header row: icon + title on the left, badge on the right */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-green-100 text-green-700">
+                  <MdDescription className="w-5 h-5" />
+                </span>
+
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                  Product Description
+                </h2>
+              </div>
+
+              <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium bg-green-100 text-green-700">
+                OVERVIEW
+              </span>
+            </div>
+
+            {/* Description content — full HTML from the backend
+                (headings, paragraphs, images, lists, etc). The
+                outer wrapper animates max-height smoothly between
+                a collapsed preview and the full measured height. */}
+            <div className="relative">
+              <div
+                style={{
+                  maxHeight: showFullDescription
+                    ? `${descHeight}px`
+                    : `${COLLAPSED_DESCRIPTION_HEIGHT}px`,
+                }}
+                className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
+              >
+                <div
+                  ref={descriptionRef}
+                  className="product-description-content text-gray-600 text-xs sm:text-sm leading-6 break-words"
+                  dangerouslySetInnerHTML={{
+                    __html: product.description || "",
+                  }}
+                />
+              </div>
+
+              {/* Fade-out overlay hints there's more content below,
+                  and fades away as soon as it's expanded. */}
+              {!showFullDescription && (
+                <div
+                  className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10
+                    bg-gradient-to-t from-gray-50 to-transparent
+                    transition-opacity duration-500`}
+                />
+              )}
+            </div>
+
+            {/* Toggle button — only worth showing if there's actually
+                more content than the collapsed preview reveals. */}
+            {product.description && descHeight > COLLAPSED_DESCRIPTION_HEIGHT && (
+              <div className="flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowFullDescription((prev) => !prev)}
+                  className={`
+                    inline-flex items-center gap-1.5
+                    px-4 py-2 rounded-full
+                    bg-green-100 text-green-700
+                    text-xs sm:text-sm font-medium
+                    hover:bg-green-200 cursor-pointer
+                    transition-colors duration-200
+                  `}
+                >
+                  {showFullDescription ? "Show Less" : "Read Full Description"}
+                  <MdKeyboardArrowDown
+                    className={`w-4 h-4 transition-transform duration-500 ease-in-out ${
+                      showFullDescription ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Scoped styling for the raw HTML injected via
+            dangerouslySetInnerHTML above. Since there's no
+            tailwind.config.js / typography plugin, headings,
+            lists, images, and links from the backend are styled
+            here instead — :global() lets styled-jsx reach inside
+            content it didn't compile itself. */}
+        <style jsx>{`
+          .product-description-content :global(h1),
+          .product-description-content :global(h2),
+          .product-description-content :global(h3),
+          .product-description-content :global(h4) {
+            font-weight: 700;
+            color: #111827;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+          }
+          .product-description-content :global(p) {
+            margin-bottom: 0.75rem;
+          }
+          .product-description-content :global(ul) {
+            list-style: disc;
+            margin: 0.5rem 0 0.75rem 1.25rem;
+          }
+          .product-description-content :global(ol) {
+            list-style: decimal;
+            margin: 0.5rem 0 0.75rem 1.25rem;
+          }
+          .product-description-content :global(li) {
+            margin-bottom: 0.25rem;
+          }
+          .product-description-content :global(img) {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 0.75rem 0;
+          }
+          .product-description-content :global(a) {
+            color: #16a34a;
+            text-decoration: underline;
+          }
+          .product-description-content :global(strong),
+          .product-description-content :global(b) {
+            font-weight: 600;
+            color: #111827;
+          }
+        `}</style>
 
         {/* ==================================================
             REVIEWS
