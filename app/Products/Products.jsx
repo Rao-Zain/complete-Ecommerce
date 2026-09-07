@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import Link from "next/link";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 // Generates and persists a random guest token the first time a visitor
 // with no user token loads the page, so their activity can be tracked
@@ -185,7 +186,7 @@ function Products() {
     const token = getAuthToken();
 
     if (!userId || !token) {
-      alert("Wishlist mein add karne ke liye pehle login karein");
+      toast.error("You are not logged in to enable this functionality ");
       return;
     }
 
@@ -234,8 +235,8 @@ function Products() {
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
 
   return (
-    <main className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <main className="  bg-gray-50 min-h-screen py-10 ">
+      <div className="container mx-auto mx-auto px-4 sm:px-4 py-2 sm:py-2">
 
         {/* Header Section */}
         <div className="mb-8 text-center">

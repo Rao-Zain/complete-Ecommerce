@@ -603,7 +603,7 @@ export default function Productdetail() {
 
   return (
     <main className="w-full overflow-x-hidden">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-0 py-4 sm:py-6 lg:py-8">
+      <div className="      jsx-1f9b9be4d21d2b8f w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-0 py-4 sm:py-6 lg:py-8">
         {/* ==================================================
             BREADCRUMB
         ================================================== */}

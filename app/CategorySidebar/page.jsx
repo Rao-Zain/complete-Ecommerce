@@ -168,7 +168,7 @@ const CategorySidebar = ({
 
     return (
         <aside
-            className={`w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:flex lg:flex-col sticky ${SIDEBAR_TOP_OFFSET}`}
+            className="w-full lg:w-1/5 bg-white p-5 rounded-xl shadow h-fit hidden lg:block overflow-visible sticky top-18 "
         >
             <div className="flex items-center justify-between mb-2">
                 <h2 className="font-bold text-sm tracking-tight text-gray-900">

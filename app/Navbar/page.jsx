@@ -392,10 +392,11 @@ const Navbar = () => {
   return (
     <>
       {/* 1. TOP NAVBAR (Black) - Scrolls naturally */}
-      <nav className="bg-black  text-white relative shadow-md">
-        <div className="container mx-auto">
+      <div className="bg-black sticky top-0 lg:static z-[100] shadow-lg relative" x-data="{ mobileSearchOpen: false }" >
+      <nav className="container mx-auto flex flex-col justify-between h-13 md:h-20 text-white px-3 sm:px-4 relative">
+        {/* <div className="container mx-auto"> */}
           {/* Header */}
-          <div className="flex justify-between items-center h-16 md:h-20 px-3 md:px-0">
+          <div className="flex justify-between items-center h-full w-full">
             {/* Mobile hamburger */}
             <button
               className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
@@ -561,7 +562,7 @@ const Navbar = () => {
               </Link>
             </div>
           </div>
-        </div>
+        {/* </div> */}
 
         {/* Mobile expandable search bar */}
         {mobileSearchOpen && (
@@ -582,10 +583,10 @@ const Navbar = () => {
           </div>
         )}
       </nav>
-
+</div>
       {/* 2. BOTTOM NAVBAR (White) - Sticks to top when scrolling on lg screens */}
-      <div className="hidden lg:block sticky top-0 bg-white text-gray-800 shadow-md z-40">
-        <div className="container mx-auto flex items-center h-12 text-sm font-medium px-2 md:px-0">
+      <div className="bg-white shadow-md hidden lg:block lg:sticky lg:top-0 z-20">
+        <div className="container mx-auto px-4 sm:px-4 py-2 sm:py-2 flex items-center justify-between">
           <div
             className="relative"
             onMouseEnter={() => setIsCategoryOpen(true)}

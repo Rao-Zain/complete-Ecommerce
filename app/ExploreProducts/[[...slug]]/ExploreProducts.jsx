@@ -198,8 +198,8 @@ const ExploreProductsContent = () => {
 
     return (
         <div className="bg-gray-50 min-h-screen py-8">
-            <div className="container mx-auto px-4">
-                <div className="text-center mb-5">
+            <div className="container mx-auto px-3 sm:px-7 py-2  sm:pb-2">
+                <div className="text-center ">
                     <h1 className="text-2xl sm:text-2xl font-extrabold text-gray-900 flex items-center justify-center gap-2">
                         <span>🛍️</span> Explore Our Products
                     </h1>
@@ -208,7 +208,7 @@ const ExploreProductsContent = () => {
                     </p>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div className="flex flex-col lg:flex-row gap-6 pb-6 pt-3 lg:mt-0">
                     <CategorySidebar
                         pathSegments={selectedCategoryPath ? selectedCategoryPath.split('/') : []}
                         onCategoryClick={setSelectedCategoryPath}
@@ -224,23 +224,23 @@ const ExploreProductsContent = () => {
                         onCurrentCategoryChange={(node) => setCurrentCategoryName(node?.name || null)}
                     />
 
-                    <div className="container mx-auto">
-                        <div className="flex justify-between items-center bg-white px-4 p-2 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                            <h2 className="font-bold text-gray-800">
+                    <div className="flex-1 min-w-0">
+                        <div className="mb-3 hidden bg-white lg:flex flex-row gap-4 items-center justify-between bg-gray-50 border border-gray-200 rounded-xl py-2 px-4">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-700">
                                 {currentCategoryName ? `Products in ${currentCategoryName}` : "Products"} ({products.length})
                             </h2>
 
-                            <div className="relative inline-block " ref={sortRef}>
+                            <div className="w-40 relative h-[34px] " ref={sortRef}>
                                 <button
                                     type="button"
                                     onClick={() => setSortOpen((o) => !o)}
-                                    className="flex items-center gap-2 border border-gray-100 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 cursor-pointer min-w-[170px] justify-between"
+                                    className="w-full h-full bg-white border border-gray-200 rounded-full pl-3 pr-3 focus:outline-none focus:ring-gray-200 focus:border-gray-200 text-xs cursor-pointer font-medium text-gray-700 flex items-center"
                                 >
-                                    {currentSortLabel}
+                                    <span className="truncate">{currentSortLabel}</span>
                                     {sortOpen ? (
-                                        <FaChevronUp className="text-[10px] text-gray-400" />
+                                        <FaChevronUp className="text-[10px] text-gray-400 ml-auto" />
                                     ) : (
-                                        <FaChevronDown className="text-[10px] text-gray-400" />
+                                        <FaChevronDown className="text-[10px] text-gray-400 ml-auto" />
                                     )}
                                 </button>
 

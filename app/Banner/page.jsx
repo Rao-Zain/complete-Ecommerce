@@ -38,24 +38,14 @@ async function Banners() {
   const apiLarge = sortedBanners[0];
   const apiSmall = sortedBanners.slice(1, 3);
 
-  const largeBanner = apiLarge
-    ? {
-        id: apiLarge.id,
-        title: apiLarge.name,
-        subtitle: apiLarge.description,
-        discount: extractDiscount(apiLarge.description),
-        image: apiLarge.image,
-        buttonText: apiLarge.buttonText, // API abhi ye field nahi deti, undefined rahega
-        link: apiLarge.link,
-      }
-    : {
-        id: "fallback-large",
-        title: "Summer Collection",
-        subtitle: "Up to 50% OFF",
-        discount: "70",
-        image: "/img7.jfif",
-        buttonText: "Shop Now",
-      };
+  const fallbackLarge = {
+    id: "fallback-large",
+    title: "Summer Collection",
+    subtitle: "Up to 50% OFF",
+    discount: "70",
+    image: "/img7.jfif",
+    buttonText: "Shop Now",
+  };
 
   const fallbackSmall = [
     {
@@ -73,15 +63,15 @@ async function Banners() {
   ];
 
   // API field names (name/description) ko component ke expected shape (title/subtitle) mein map karo
-  const largeBanner = banners[0]
+  const largeBanner = apiLarge
     ? {
-        id: banners[0].id,
-        title: banners[0].name,
-        subtitle: banners[0].description,
-        discount: extractDiscount(banners[0].description),
-        image: banners[0].image,
-        buttonText: banners[0].buttonText ?? null,
-        link: banners[0].link ?? null,
+        id: apiLarge.id,
+        title: apiLarge.name,
+        subtitle: apiLarge.description,
+        discount: extractDiscount(apiLarge.description),
+        image: apiLarge.image,
+        buttonText: apiLarge.buttonText ?? null,
+        link: apiLarge.link ?? null,
       }
     : fallbackLarge;
 
@@ -101,7 +91,8 @@ async function Banners() {
   const getImageUrl = (path) => {
     if (!path) return "/placeholder.jpg";
     if (path.startsWith("http")) return path;
-    return `${IMAGE_BASE_URL}${path}`;
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    return `${IMAGE_BASE_URL}/${cleanPath}`;
   };
 
   return (
@@ -177,14 +168,6 @@ async function Banners() {
                 <div className="relative z-10">
                   <span className="text-[11px] uppercase tracking-widest text-gray-200 font-medium block whitespace-pre-line">
                     {banner.subtitle}
-                  </span>
-                </div>
-              )}
-
-              {index === 1 && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-20">
-                  <span className="text-[100px] sm:text-[120px] font-black tracking-widest text-white">
-                    {/* SALE */}
                   </span>
                 </div>
               )}

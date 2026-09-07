@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
-const defaultPic = "/default.jpg"; // public/ folder me apni default image rakh dein
+const defaultPic = "/default.jpg";
 
 function OrderDetail() {
   const params = useParams();
@@ -17,14 +17,10 @@ function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cancel order ke liye alag states
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
 
-  // Helper Image URL Formatter for Order Items
   const getProductImage = (item) => {
-    // Pehle product.images array me se is_main:1 wali image dhoondo,
-    // agar na mile to pehli available image le lo
     const mainImage =
       item?.product?.images?.find((img) => img.is_main === 1) ||
       item?.product?.images?.[0];
@@ -41,16 +37,12 @@ function OrderDetail() {
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
 
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-
-    // baaki app ke pattern jaisa: IMAGE_BASE_URL khud hi storage root hai,
-    // isliye manually "/storage/" prefix mat add karo
     return `${IMAGE_BASE_URL}/${cleanPath}`;
   };
 
   useEffect(() => {
     if (!id) return;
 
-    // localStorage sirf client pe available hoti hai, isliye effect ke andar read kiya
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
 
@@ -121,7 +113,6 @@ function OrderDetail() {
     fetchOrderDetail();
   }, [id]);
 
-  // Cancel Order Handler
   const handleCancelOrder = async () => {
     const confirmCancel = window.confirm(
       "Kya aap wakai is order ko cancel karna chahte hain?"
@@ -157,7 +148,6 @@ function OrderDetail() {
         throw new Error(result?.message || "Order cancel nahi ho saka");
       }
 
-      // UI me order status ko turant "Cancelled" update kar dein
       setOrderData((prev) => ({
         ...prev,
         status: "Cancelled",
@@ -199,7 +189,6 @@ function OrderDetail() {
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="container px-4 mx-auto sm:px-6 lg:px-10 space-y-6">
 
-        {/* Back Button */}
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition cursor-pointer"
@@ -207,7 +196,6 @@ function OrderDetail() {
           <ArrowLeft size={20} /> Back to Orders
         </button>
 
-        {/* Top Header Card: Order ID & Status */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -225,7 +213,6 @@ function OrderDetail() {
           </div>
         </div>
 
-        {/* Order Items Section */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-4">
             📦 Order Items ({orderData.items.length})
@@ -239,7 +226,6 @@ function OrderDetail() {
                   index !== orderData.items.length - 1 ? "border-b border-gray-200 pb-6" : ""
                 }`}
               >
-                {/* Left: Image & Info */}
                 <div className="flex items-center gap-4">
                   <img
                     src={item.image}
@@ -255,7 +241,6 @@ function OrderDetail() {
                       {item.name}
                     </h3>
 
-                    {/* Color & Size — colorful badges */}
                     <div className="flex flex-wrap gap-2 mt-2">
                       <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-md font-medium">
                         Color: {item.color}
@@ -280,7 +265,6 @@ function OrderDetail() {
                   </div>
                 </div>
 
-                {/* Right: Price */}
                 <div className="text-left sm:text-right w-full sm:w-auto">
                   <h4 className="text-xl font-bold text-emerald-600">
                     {item.totalPrice}
@@ -291,7 +275,6 @@ function OrderDetail() {
           </div>
         </div>
 
-        {/* Grand Total & Cancel Action */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
           <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-4 flex justify-between items-center">
             <span className="font-bold text-gray-800 text-base">Grand Total</span>
