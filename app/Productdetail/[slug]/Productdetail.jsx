@@ -602,8 +602,8 @@ export default function Productdetail() {
   // =========================================================
 
   return (
-    <main className="w-full overflow-x-hidden">
-      <div className="      jsx-1f9b9be4d21d2b8f w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-0 py-4 sm:py-6 lg:py-8">
+    <main className="w-full overflow-x-hidden bg-gray-100">
+      <div className=" jsx-1f9b9be4d21d2b8f w-full max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         {/* ==================================================
             BREADCRUMB
         ================================================== */}
@@ -1153,7 +1153,7 @@ export default function Productdetail() {
         ================================================== */}
 
         <section className="mt-8 sm:mt-10 lg:mt-12">
-          <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-5 sm:p-6 lg:p-7">
+          <div className="rounded-xl  bg-gray-100 p-5 sm:p-6 lg:p-7">
             {/* Header row: icon + title on the left, badge on the right */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">

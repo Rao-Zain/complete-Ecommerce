@@ -125,7 +125,7 @@ const FlashSales = () => {
 
     return (
         <section className="bg-gray-50 py-6">
-            <div className="container mx-auto px-3 sm:px-6 md:px-7">
+            <div className="container mx-auto px-3 sm:px-6 md:px-7 py-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                     <div>
