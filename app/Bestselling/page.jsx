@@ -122,7 +122,7 @@ function Bestselling() {
   };
 
   return (
-    <main className="w-full mx-auto px-3 sm:px-6 md:px-7 sm:pt-4 mb-2 sm:mb-4 lg:mb-2 flex justify-between items-center">
+    <main className="w-full mx-auto container px-3 sm:px-4 sm:pt-4 mb-2 sm:mb-4 lg:mb-2 flex justify-between items-center">
       <div className="w-full mx-auto">
         {/* Header Section */}
         <div className="mb-8 container mx-auto items-center justify-center">

@@ -96,7 +96,7 @@ async function Banners() {
   };
 
   return (
-    <section className="container mx-auto py-2">
+    <section className="container mx-auto px-3 sm:px-4 py-2">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* Left Big Banner */}

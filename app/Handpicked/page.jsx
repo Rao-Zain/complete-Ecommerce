@@ -228,7 +228,7 @@ function Handpicked() {
 
   return (
     <main className="bg-gray-50 min-h-screen py-4">
-      <div className="mx-auto container">
+      <div className="mx-auto container px-3 sm:px-4">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2">

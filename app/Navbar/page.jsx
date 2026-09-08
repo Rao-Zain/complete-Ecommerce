@@ -477,70 +477,69 @@ const Navbar = () => {
               <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
               {/* User Profile / Sign In */}
-              <div className="relative py-1" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      setActiveModal("login");
-                    } else {
-                      setShowDropdown((prev) => !prev);
-                    }
-                  }}
-                  className="flex items-center gap-2 cursor-pointer rounded-xl  border border-transparent transition "
-                >
-                  <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
-                    <FaUser />
-                  </div>
-                  <div className="text-left leading-tight ">
-                    <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
-                    <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
-                      {isLoggedIn ? user.name : "Sign in / Register"}
-                    </span>
-                  </div>
-                </button>
+         <div className="relative py-1 hover:text-green-500" ref={dropdownRef}>
+  <button
+    type="button"
+    onClick={() => {
+      if (!isLoggedIn) {
+        setActiveModal("login");
+      } else {
+        setShowDropdown((prev) => !prev);
+      }
+    }}
+    className="flex items-center gap-2 hover:text-green-500 cursor-pointer rounded-xl border border-transparent transition"
+  >
+    <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
+      <FaUser />
+    </div>
+    <div className="text-left leading-tight hover:text-green-500">
+      <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
+      <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
+        {isLoggedIn ? user.name : "Sign in / Register"}
+      </span>
+    </div>
+  </button>
 
-                {showDropdown && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-                      <h3 className="font-bold text-gray-900 truncate text-sm">
-                        {isLoggedIn ? user.name : "Hello, Guest"}
-                      </h3>
-                      <p className="text-xs text-gray-500 truncate">
-                        {isLoggedIn ? user.email : "Welcome to our store!"}
-                      </p>
-                    </div>
+  {showDropdown && (
+    <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
+      <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+        <h3 className="font-bold text-gray-900 truncate text-sm">
+          {isLoggedIn ? user.name : "Hello, Guest"}
+        </h3>
+        <p className="text-xs text-gray-500 truncate">
+          {isLoggedIn ? user.email : "Welcome to our store!"}
+        </p>
+      </div>
 
-                    <div className="py-1">
-                      <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
-                      </Link>
-                      <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
-                      </Link>
-                    </div>
+      <div className="py-1">
+        <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+          <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
+        </Link>
+        <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+          <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
+        </Link>
+      </div>
 
-                    {!isLoggedIn ? (
-                      <div className="border-t border-gray-100 pt-1">
-                        <button
-                          onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
-                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
-                        >
-                          <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="border-t border-gray-100 pt-1">
-                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
-                          <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
+      {!isLoggedIn ? (
+        <div className="border-t border-gray-100 pt-1">
+          <button
+            onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
+            className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
+          >
+            <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
+          </button>
+        </div>
+      ) : (
+        <div className="border-t border-gray-100 pt-1">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
+            <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+</div>
             {/* Mobile: search toggle + cart icon */}
             <div className="flex md:hidden items-center gap-1">
               <button
@@ -672,17 +671,17 @@ const Navbar = () => {
 
           {/* Center links */}
           <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto">
-            <Link href="/Products" className="hover:text-blue-600 transition whitespace-nowrap ms-6">
+            <Link href="/Products" className="hover:text-green-600 transition whitespace-nowrap ms-6">
               All Products
             </Link>
-            <Link href="/ExploreProducts" className="hover:text-blue-600 transition whitespace-nowrap">
+            <Link href="/ExploreProducts" className="hover:text-green-600 transition whitespace-nowrap">
               Categories
             </Link>
             {quickLinkCategories.map((cat) => (
               <Link
                 key={cat.id}
                 href={`/Categories/${cat.slug}`}
-                className="hover:text-blue-600 transition whitespace-nowrap"
+                className="hover:text-green-600 transition whitespace-nowrap"
               >
                 {cat.name}
               </Link>

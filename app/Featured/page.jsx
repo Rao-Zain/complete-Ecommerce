@@ -115,7 +115,7 @@ function Featured() {
   };
 
   return (
-    <main className=" container mx-auto bg-gray-50 min-hx-screen pb-4 ">
+    <main className=" container px-3 sm:px-4 mx-auto bg-gray-50 min-hx-screen pb-4 ">
       <div className=" mx-auto">
 
         {/* Header Section */}

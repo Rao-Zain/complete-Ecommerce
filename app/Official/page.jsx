@@ -32,7 +32,7 @@ async function Official() {
     : "/girls.jpg";
 
   return (
-    <section className="relative w-full bg-[#111827] overflow-hidden py-10 sm:py-14 px-6 sm:px-10 lg:px-16">
+    <section className="relative w-full bg-[#111827]  overflow-hidden py-10 sm:py-14 px-6 ">
       {/* Background Image with Gradient Overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-fixed opacity-70 z-0"
@@ -43,10 +43,10 @@ async function Official() {
       <div className="absolute inset-0 bg-gradient-to-r from-[#0b0f17] via-[#0b0f17]/90 to-transparent z-10"></div>
 
       {/* Content Container (Left Aligned as per screenshot) */}
-      <div className="relative z-20 max-w-7xl mx-auto flex flex-col items-start text-left">
+      <div className="relative z-10 px-3 sm:px-4 container mx-auto flex flex-col items-start text-left">
 
         {/* Official Partner Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-red-950/60 border border-red-900/50 text-red-400 text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+        <div className="inline-flex items-center gap-1.5 bg-red-950/60 border border-red-900/50 text-red-400 text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase mb-3">
           <span>👑</span>
           <span>Official Partner Showcase</span>
         </div>

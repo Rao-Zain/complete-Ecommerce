@@ -124,8 +124,8 @@ const FlashSales = () => {
     }, []);
 
     return (
-        <section className="bg-gray-50 py-6">
-            <div className="container mx-auto px-3 sm:px-6 md:px-7 py-6">
+        <section className="bg-gray-50 pt-4">
+            <div className="container mx-auto px-3 sm:px-4 pt-6">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                     <div>
@@ -146,7 +146,7 @@ const FlashSales = () => {
 
                     <Link
                         href="/FlashSales"
-                        className="hidden sm:flex items-center gap-1 text-emerald-700 text-sm font-medium hover:underline whitespace-nowrap"
+                        className="hidden sm:flex items-center gap-1 text-emerald-700 text-sm font-medium hover:text-emerald-900 whitespace-nowrap"
                     >
                         More Products <span aria-hidden>→</span>
                     </Link>
@@ -175,7 +175,7 @@ const FlashSales = () => {
 
                 {/* Products Grid */}
                 {!loading && products.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                         {products.map((product) => {
                             const firstVariant = product.variants?.[0];
                             const price = firstVariant ? Number(firstVariant.price) : null;
@@ -205,7 +205,7 @@ const FlashSales = () => {
                                     className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 flex flex-col"
                                 >
                                     {/* Image */}
-                                    <div className="relative bg-gray-100 h-48 sm:h-56 w-full overflow-hidden">
+                                    <div className="relative bg-gray-100 h-52  w-full overflow-hidden">
                                         {discountPercent !== null && (
                                             <span className="absolute top-2 left-2 flex items-center gap-1 bg-orange-500 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded z-10">
                                                 <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
