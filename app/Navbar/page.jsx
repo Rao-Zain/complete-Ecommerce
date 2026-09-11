@@ -19,44 +19,80 @@ import {
   FaSignInAlt,
   FaUserPlus,
   FaHome,
-  FaShoppingBag
+  FaShoppingBag,
+  FaEye,
+  FaEyeSlash
 } from "react-icons/fa";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { API_BASE_URL } from "@/lib/config";
 
 const Navbar = () => {
   const router = useRouter();
-  const [storeSettings, setStoreSettings] = useState(null);
+
+  // Initialize with cached storeSettings to eliminate the initial logo flash
+  const [storeSettings, setStoreSettings] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("storeSettings");
+        return cached ? JSON.parse(cached) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
 
-  const [user, setUser] = useState({ name: "Guest", email: "guest@example.com" });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Initialize user and auth state directly from localStorage if present
+  const [user, setUser] = useState(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("userName") || localStorage.getItem("name") || "Guest";
+      const storedEmail = localStorage.getItem("email") || "guest@example.com";
+      return { name: storedName, email: storedEmail };
+    }
+    return { name: "Guest", email: "guest@example.com" };
+  });
+
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("token");
+    }
+    return false;
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Categories states
-  const [categoriesData, setCategoriesData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Categories states with cache initialization to prevent shift in the lower nav
+  const [categoriesData, setCategoriesData] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("navbarCategories");
+        return cached ? JSON.parse(cached) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [loading, setLoading] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
 
-  // Mobile drawer's own category accordion state (independent of desktop hover menu)
+  // Mobile drawer category accordion state
   const [mobileOpenCategoryId, setMobileOpenCategoryId] = useState(null);
 
   // Dropdown & Modal States
-  const [showDropdown, setShowDropdown] = useState(false); // now CLICK-based, not hover
-  const dropdownRef = useRef(null); // for click-outside detection, matches reference's @click.outside
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // Mobile expandable search bar (separate from the hamburger drawer — matches reference)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-
-  // Modal States (Login & Register Popups)
-  const [activeModal, setActiveModal] = useState(null); // 'login' | 'register' | null
+  const [activeModal, setActiveModal] = useState(null);
 
   // Login Form States
   const [loginEmail, setLoginEmail] = useState("");
@@ -71,19 +107,19 @@ const Navbar = () => {
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
-
-  // Field-level validation errors (from backend `errors` object)
   const [regFieldErrors, setRegFieldErrors] = useState({});
 
   // Fetch Categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        setLoading(true);
+        if (categoriesData.length === 0) setLoading(true);
         const res = await fetch(`${API_BASE_URL}/api/categories`);
         const json = await res.json();
         const categoryData = json?.data ? json.data : json;
-        setCategoriesData(Array.isArray(categoryData) ? categoryData : []);
+        const normalized = Array.isArray(categoryData) ? categoryData : [];
+        setCategoriesData(normalized);
+        localStorage.setItem("navbarCategories", JSON.stringify(normalized));
       } catch (err) {
         console.error("Failed to load categories:", err);
       } finally {
@@ -93,6 +129,7 @@ const Navbar = () => {
     fetchCategories();
   }, []);
 
+  // Fetch Store Settings
   useEffect(() => {
     const fetchStoreSettings = async () => {
       try {
@@ -100,6 +137,7 @@ const Navbar = () => {
         const json = await res.json();
         if (json?.success && json?.data) {
           setStoreSettings(json.data);
+          localStorage.setItem("storeSettings", JSON.stringify(json.data));
         }
       } catch (err) {
         console.error("Failed to load store settings:", err);
@@ -115,12 +153,12 @@ const Navbar = () => {
     return `${API_BASE_URL}/storage/${cleanPath}`;
   };
 
-  // Load User & Auth state
+  // Synchronize User & Auth State
   useEffect(() => {
     const loadUserData = () => {
       const token = localStorage.getItem("token");
-      const storedName = localStorage.getItem("userName") || localStorage.getItem("name") || "User";
-      const storedEmail = localStorage.getItem("email") || "user@example.com";
+      const storedName = localStorage.getItem("userName") || localStorage.getItem("name") || "Guest";
+      const storedEmail = localStorage.getItem("email") || "guest@example.com";
 
       setUser({ name: storedName, email: storedEmail });
       setIsLoggedIn(!!token);
@@ -151,7 +189,7 @@ const Navbar = () => {
     };
   }, []);
 
-  // Cart Counter — counts DISTINCT items (line items), not total quantity.
+  // Cart Counter
   useEffect(() => {
     const updateCart = async () => {
       const token = localStorage.getItem("token");
@@ -193,7 +231,6 @@ const Navbar = () => {
     };
   }, []);
 
-  // Opens the login/register modal when another component dispatches "open-auth-modal"
   useEffect(() => {
     const handleOpenAuthModal = (e) => {
       setActiveModal(e?.detail?.mode || "login");
@@ -202,14 +239,11 @@ const Navbar = () => {
     return () => window.removeEventListener("open-auth-modal", handleOpenAuthModal);
   }, []);
 
-  // Lock body scroll while the mobile drawer is open
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen]);
 
-  // Click-outside-to-close for the profile dropdown — mirrors the reference's
-  // `@click.outside="mobileDropdownOpen = false"` behavior. Hover was removed.
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -272,13 +306,8 @@ const Navbar = () => {
           data.data.data?.user?.id ??
           data.data.data?.id;
 
-        if (!userToken) {
-          setLoginError("Login succeeded, but no token was returned by the server.");
-          return;
-        }
-
-        if (!userId) {
-          setLoginError("Login succeeded, but no user ID was returned by the server.");
+        if (!userToken || !userId) {
+          setLoginError("Login succeeded, but authentication credentials were not returned.");
           return;
         }
 
@@ -383,21 +412,15 @@ const Navbar = () => {
 
   const activeMainCat = categoriesData.find((c) => c.id === activeMain);
   const activeSubCat = activeMainCat?.children?.find((s) => s.id === activeSub);
-
-  // Reference's secondary-bar center links: "All Products", "Categories",
-  // then the first 4 real top-level categories (Men's Fashion, Women's
-  // Fashion, Mother & Baby, Home & Lifestyle) — not generic Home/Contact links.
   const quickLinkCategories = categoriesData.slice(0, 4);
 
   return (
     <>
-      {/* 1. TOP NAVBAR (Black) - Scrolls naturally */}
-      <div className="bg-black sticky top-0 lg:static z-[100] shadow-lg relative" x-data="{ mobileSearchOpen: false }" >
-      <nav className="container mx-auto flex flex-col justify-between h-13 md:h-20 text-white px-3 sm:px-4 relative">
-        {/* <div className="container mx-auto"> */}
-          {/* Header */}
+      {/* 1. TOP NAVBAR (Black) */}
+      <div className="bg-black sticky top-0 lg:static z-[100] shadow-lg relative">
+        <nav className="container mx-auto flex flex-col justify-between h-13 md:h-20 text-white px-3 sm:px-4 relative">
           <div className="flex justify-between items-center h-full w-full">
-            {/* Mobile hamburger */}
+            {/* Mobile Hamburger */}
             <button
               className="md:hidden text-2xl cursor-pointer p-2 text-white hover:text-blue-400"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -406,34 +429,41 @@ const Navbar = () => {
               {menuOpen ? <FaTimes /> : <FaBars />}
             </button>
 
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 hover:opacity-90 transition-opacity flex-shrink-0"
-              onClick={closeMobileMenu}
-            >
-              {storeSettings?.is_logo && getStoreLogoUrl(storeSettings.logo) ? (
-                <img
-                  src={getStoreLogoUrl(storeSettings.logo)}
-                  alt={storeSettings.title || "Store Logo"}
-                  className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
-                />
-              ) : (
-                <Image
-                  src="/logo (9).png"
-                  alt="ShopNest Logo"
-                  width={280}
-                  height={180}
-                  className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
-                  priority
-                />
-              )}
+            {/* Reserved Width Logo Container */}
+            <div className="min-w-[150px] sm:min-w-[200px] flex items-center">
+              <Link
+                href="/"
+                className="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
+                onClick={closeMobileMenu}
+              >
+                {storeSettings?.is_logo && getStoreLogoUrl(storeSettings.logo) ? (
+                  <img
+                    src={getStoreLogoUrl(storeSettings.logo)}
+                    alt={storeSettings.title || "Store Logo"}
+                    className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
+                  />
+                ) : storeSettings ? (
+                  <Image
+                    src="/logo (9).png"
+                    alt="ShopNest Logo"
+                    width={280}
+                    height={180}
+                    className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
+                    priority
+                  />
+                ) : (
+                  <div className="h-6 sm:h-9 w-28 bg-gray-800 rounded animate-pulse" />
+                )}
 
-              {storeSettings?.is_title && storeSettings?.title && (
-                <span className="text-base sm:text-xl font-bold tracking-tight text-white">
-                  {storeSettings.title}
-                </span>
-              )}
-            </Link>
+                {storeSettings?.is_title && storeSettings?.title && (
+                  <span className="text-base sm:text-xl font-bold tracking-tight text-white whitespace-nowrap">
+                    {storeSettings.title}
+                  </span>
+                )}
+              </Link>
+            </div>
+
+            {/* Centered Search Bar */}
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
               <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
                 <input
@@ -454,6 +484,7 @@ const Navbar = () => {
               </form>
             </div>
 
+            {/* Right Icons Container */}
             <div className="hidden md:flex items-center flex-shrink-0">
               <Link href="/Wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
                 <FaHeart className="text-xl hover:text-red-500 transition" />
@@ -473,74 +504,74 @@ const Navbar = () => {
                 )}
               </Link>
 
-
               <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
               {/* User Profile / Sign In */}
-         <div className="relative py-1 hover:text-green-500" ref={dropdownRef}>
-  <button
-    type="button"
-    onClick={() => {
-      if (!isLoggedIn) {
-        setActiveModal("login");
-      } else {
-        setShowDropdown((prev) => !prev);
-      }
-    }}
-    className="flex items-center gap-2 hover:text-green-500 cursor-pointer rounded-xl border border-transparent transition"
-  >
-    <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
-      <FaUser />
-    </div>
-    <div className="text-left leading-tight hover:text-green-500">
-      <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
-      <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
-        {isLoggedIn ? user.name : "Sign in / Register"}
-      </span>
-    </div>
-  </button>
+              <div className="relative py-1 hover:text-green-500 min-w-[130px]" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      setActiveModal("login");
+                    } else {
+                      setShowDropdown((prev) => !prev);
+                    }
+                  }}
+                  className="flex items-center gap-2 hover:text-green-500 cursor-pointer rounded-xl border border-transparent transition text-left"
+                >
+                  <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
+                    <FaUser />
+                  </div>
+                  <div className="leading-tight hover:text-green-500">
+                    <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
+                    <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
+                      {isLoggedIn ? user.name : "Sign in / Register"}
+                    </span>
+                  </div>
+                </button>
 
-  {showDropdown && (
-    <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
-      <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-        <h3 className="font-bold text-gray-900 truncate text-sm">
-          {isLoggedIn ? user.name : "Hello, Guest"}
-        </h3>
-        <p className="text-xs text-gray-500 truncate">
-          {isLoggedIn ? user.email : "Welcome to our store!"}
-        </p>
-      </div>
+                {showDropdown && (
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+                      <h3 className="font-bold text-gray-900 truncate text-sm">
+                        {isLoggedIn ? user.name : "Hello, Guest"}
+                      </h3>
+                      <p className="text-xs text-gray-500 truncate">
+                        {isLoggedIn ? user.email : "Welcome to our store!"}
+                      </p>
+                    </div>
 
-      <div className="py-1">
-        <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-          <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
-        </Link>
-        <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-          <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
-        </Link>
-      </div>
+                    <div className="py-1">
+                      <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
+                      </Link>
+                      <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                        <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
+                      </Link>
+                    </div>
 
-      {!isLoggedIn ? (
-        <div className="border-t border-gray-100 pt-1">
-          <button
-            onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
-            className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
-          >
-            <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
-          </button>
-        </div>
-      ) : (
-        <div className="border-t border-gray-100 pt-1">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
-            <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
-          </button>
-        </div>
-      )}
-    </div>
-  )}
-</div>
-</div>
-            {/* Mobile: search toggle + cart icon */}
+                    {!isLoggedIn ? (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button
+                          onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
+                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
+                        >
+                          <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-t border-gray-100 pt-1">
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
+                          <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Header Icons */}
             <div className="flex md:hidden items-center gap-1">
               <button
                 type="button"
@@ -561,31 +592,31 @@ const Navbar = () => {
               </Link>
             </div>
           </div>
-        {/* </div> */}
 
-        {/* Mobile expandable search bar */}
-        {mobileSearchOpen && (
-          <div className="md:hidden w-full bg-gray-200 border-t border-gray-300 shadow-inner px-3 py-2">
-            <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, brands and more..."
-                className="w-full bg-white text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none border border-gray-300"
-              />
-              <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
-                <FaSearch className="text-xs" />
-              </button>
-            </form>
-          </div>
-        )}
-      </nav>
-</div>
-      {/* 2. BOTTOM NAVBAR (White) - Sticks to top when scrolling on lg screens */}
+          {/* Mobile Expandable Search */}
+          {mobileSearchOpen && (
+            <div className="md:hidden w-full bg-gray-200 border-t border-gray-300 shadow-inner px-3 py-2">
+              <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products, brands and more..."
+                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none border border-gray-300"
+                />
+                <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
+                  <FaSearch className="text-xs" />
+                </button>
+              </form>
+            </div>
+          )}
+        </nav>
+      </div>
+
+      {/* 2. BOTTOM NAVBAR (White) */}
       <div className="bg-white shadow-md hidden lg:block lg:sticky lg:top-0 z-20">
-        <div className="container mx-auto px-4 sm:px-4 py-2 sm:py-2 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-4 py-2 flex items-center justify-between">
           <div
             className="relative"
             onMouseEnter={() => setIsCategoryOpen(true)}
@@ -600,11 +631,10 @@ const Navbar = () => {
               <FaChevronDown className="text-xs text-gray-500 ml-auto" />
             </button>
 
-            {/* Categories Dropdown Panels */}
+            {/* Dropdown panels */}
             <div className={`${isCategoryOpen ? "flex" : "hidden"} absolute left-0 top-full z-50`}>
-              {/* LEVEL 1: Main Categories */}
               <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100 shadow-2xl scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
-                {loading ? (
+                {loading && categoriesData.length === 0 ? (
                   <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
                 ) : (
                   <ul className="space-y-0.5">
@@ -624,7 +654,6 @@ const Navbar = () => {
                 )}
               </div>
 
-              {/* LEVEL 2: Sub Categories */}
               {activeMainCat?.children?.length > 0 && (
                 <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
                   <ul className="space-y-0.5">
@@ -645,7 +674,6 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* LEVEL 3: Child Categories */}
               {activeSubCat?.children?.length > 0 && (
                 <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 shadow-2xl overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-100">
                   <ul className="space-y-0.5">
@@ -669,30 +697,40 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Center links */}
-          <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto">
+          {/* Center Links with Fixed Layout Anchor */}
+          <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto min-h-[24px]">
             <Link href="/Products" className="hover:text-green-600 transition whitespace-nowrap ms-6">
               All Products
             </Link>
             <Link href="/ExploreProducts" className="hover:text-green-600 transition whitespace-nowrap">
               Categories
             </Link>
-            {quickLinkCategories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/Categories/${cat.slug}`}
-                className="hover:text-green-600 transition whitespace-nowrap"
-              >
-                {cat.name}
-              </Link>
-            ))}
+
+            {quickLinkCategories.length > 0 ? (
+              quickLinkCategories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/Categories/${cat.slug}`}
+                  className="hover:text-green-600 transition whitespace-nowrap"
+                >
+                  {cat.name}
+                </Link>
+              ))
+            ) : (
+              // Keeps the layout stable while waiting for category fetch
+              <div className="flex items-center gap-8 animate-pulse">
+                <div className="w-24 h-4 bg-gray-100 rounded" />
+                <div className="w-28 h-4 bg-gray-100 rounded" />
+                <div className="w-24 h-4 bg-gray-100 rounded" />
+              </div>
+            )}
           </div>
 
           <div className="w-64 shrink-0" />
         </div>
       </div>
 
-      {/* MOBILE SLIDE-OUT MENU */}
+      {/* Mobile Slide-Out Menu */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
@@ -759,7 +797,7 @@ const Navbar = () => {
             </div>
 
             <div className="p-4 border-b border-gray-100 grid grid-cols-2 gap-2">
-              <Link href="/wishlist" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
+              <Link href="/Wishlist" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
                 <FaHeart className="text-gray-400" /> Wishlist
                 {wishlistCount > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5">{wishlistCount}</span>}
               </Link>
@@ -786,7 +824,7 @@ const Navbar = () => {
 
             <div className="p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Shop by Category</h3>
-              {loading ? (
+              {loading && categoriesData.length === 0 ? (
                 <p className="text-xs text-gray-500">Loading...</p>
               ) : (
                 <ul className="space-y-0.5">
@@ -840,13 +878,11 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* LOGIN & REGISTER MODAL */}
+      {/* Auth Modals */}
       {activeModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-
           {activeModal === "login" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-5 relative animate-in zoom-in-95 duration-200">
-
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
@@ -926,7 +962,6 @@ const Navbar = () => {
 
           {activeModal === "register" && (
             <div className="bg-white text-gray-800 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md p-5 relative animate-in zoom-in-95 duration-200">
-
               <button
                 onClick={() => setActiveModal(null)}
                 className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition p-1 cursor-pointer"
@@ -1061,39 +1096,24 @@ const Navbar = () => {
               </div>
             </div>
           )}
-
         </div>
       )}
 
-      {/* MOBILE BOTTOM TAB BAR — fixed, icons only, matches reference. Hidden on md+ */}
+      {/* Mobile Tab Bar */}
       <div
         className="md:hidden fixed bottom-0 left-0 right-0 inset-x-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-2"
         style={{ marginBottom: "-2px" }}
       >
         <div className="flex items-center justify-between">
-          {/* Home */}
-          <Link
-            href="/"
-            className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
-          >
+          <Link href="/" className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <FaHome className="text-base" />
             <span className="text-[10px] mt-0.5">Home</span>
           </Link>
-
-          {/* Shop */}
-          <Link
-            href="/Products"
-            className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
-          >
+          <Link href="/Products" className="flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <FaShoppingBag className="text-base" />
             <span className="text-[10px] mt-0.5">Shop</span>
           </Link>
-
-          {/* Cart — badge only shows when count > 0, reusing the same cartCount state as the header */}
-          <Link
-            href="/CartProduct"
-            className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
-          >
+          <Link href="/CartProduct" className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <div className="relative">
               <FaShoppingCart className="text-base" />
               {cartCount > 0 && (
@@ -1104,12 +1124,7 @@ const Navbar = () => {
             </div>
             <span className="text-[10px] mt-0.5">Cart</span>
           </Link>
-
-          {/* Wishlist */}
-          <Link
-            href="/Wishlist"
-            className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition"
-          >
+          <Link href="/Wishlist" className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <div className="relative">
               <FaHeart className="text-base" />
               {wishlistCount > 0 && (
@@ -1120,9 +1135,6 @@ const Navbar = () => {
             </div>
             <span className="text-[10px] mt-0.5">Wishlist</span>
           </Link>
-
-          {/* Account — logged in goes straight to /Profile, guests get the login modal
-              (same behavior as the desktop profile trigger) */}
           <button
             type="button"
             onClick={() => (isLoggedIn ? router.push("/Account") : setActiveModal("login"))}

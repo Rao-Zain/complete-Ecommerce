@@ -28,33 +28,9 @@ const AVAILABLE_BRANDS = [
     { name: 'Gucci', slug: 'gucci' }
 ];
 
-// How far down the viewport the sidebar starts (matches header/nav height).
-const SIDEBAR_TOP_OFFSET = "top-16";
-
-/**
- * Self-contained filter sidebar.
- * Fetches its own category tree from API_BASE_URL.
- * Filter *values* (price/color/size/brand) are owned by the parent
- * so the parent can use them to fetch products — this component
- * only reads them for display and calls back on change.
- *
- * Color, size, and brand filters are all multi-select: `selectedColors`,
- * `selectedSizes`, and `selectedBrands` are arrays, and each `on*Toggle`
- * callback receives the single value clicked — the parent adds/removes
- * it from the array.
- *
- * Categories and Brands each truncate to a short list with their own
- * independent "See More" toggle. Price / Color / Size are always shown
- * in full — nothing in the panel is globally clipped.
- *
- * onCurrentCategoryChange (optional): called with the resolved category
- * node (or null) whenever the current selection changes — the parent's
- * ExploreProducts page uses this for the "Products in {name}" heading,
- * since this component now owns the category data itself.
- */
 const CategorySidebar = ({
-    pathSegments = [],       // array of slug segments, e.g. ['mens-fashion','t-shirts','graphic-tees']
-    onCategoryClick,         // (categoryPath: string) => void
+    pathSegments = [],
+    onCategoryClick,
     priceRange,
     onPriceChange,
     selectedColors = [],
@@ -64,13 +40,12 @@ const CategorySidebar = ({
     selectedBrands = [],
     onBrandToggle,
     onClearFilters,
-    onCurrentCategoryChange, // (node: object|null) => void
+    onCurrentCategoryChange,
 }) => {
     const [categoriesData, setCategoriesData] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
     const isFirstLoad = useRef(true);
 
-    // Categories and Brands each truncate independently and expand on their own
     const [categoriesExpanded, setCategoriesExpanded] = useState(false);
     const [brandsExpanded, setBrandsExpanded] = useState(false);
     const VISIBLE_CATEGORY_COUNT = 6;
@@ -101,9 +76,6 @@ const CategorySidebar = ({
             });
     }, [fullPath]);
 
-    // Finds a category node anywhere in the tree along with its direct
-    // parent — used to build the "Back to {parent}" link and the flat
-    // sibling list, instead of rendering the whole tree.
     const findNodeWithParent = (categories, slug, parent = null) => {
         for (let cat of categories) {
             if (cat.slug === slug) return { node: cat, parent };
@@ -120,10 +92,8 @@ const CategorySidebar = ({
     const immediateParent = currentMatch?.parent || null;
     const siblingCategories = immediateParent
         ? (immediateParent.all_children || immediateParent.children || [])
-        : categoriesData; // no parent found (shouldn't normally happen at sidebar depth) — fall back to top level
+        : categoriesData;
 
-    // Path with the last segment (the currently selected leaf) removed —
-    // used both for the "Back" link and for building sibling links.
     const parentPath = pathSegments.slice(0, -1).join('/');
 
     const visibleCategories = categoriesExpanded
@@ -143,24 +113,71 @@ const CategorySidebar = ({
         selectedSizes.length > 0 ||
         selectedBrands.length > 0;
 
-    // Let the parent know which category node is currently resolved, so
-    // it can render a "Products in {name}" heading without needing its
-    // own copy of the category tree.
     useEffect(() => {
         if (onCurrentCategoryChange) {
             onCurrentCategoryChange(currentMatch?.node || null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentMatch?.node?.id]);
 
+    // 1:1 Pixel-Perfect Shimmer Scaffold
     if (categoriesLoading) {
         return (
-            <aside className={`w-full lg:w-1/4 bg-white p-5 rounded-xl shadow hidden lg:block sticky ${SIDEBAR_TOP_OFFSET} animate-pulse`}>
-                <div className="w-24 h-5 bg-gray-200 rounded mb-4"></div>
-                <div className="space-y-2">
-                    {[...Array(6)].map((_, i) => (
-                        <div key={i} className="h-6 bg-gray-100 rounded"></div>
+            <aside className="w-full lg:w-1/5 bg-white p-5 rounded-xl shadow h-fit hidden lg:block overflow-visible sticky top-18 animate-pulse">
+                {/* Header: Title */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                </div>
+
+                {/* Categories List */}
+                <div className="flex flex-col gap-1.5 pb-2">
+                    {[75, 55, 80, 60, 70, 50].map((widthPercent, i) => (
+                        <div key={i} className="py-1.5 px-3">
+                            <div className="h-4 bg-gray-200 rounded" style={{ width: `${widthPercent}%` }}></div>
+                        </div>
                     ))}
+                    {/* See More Button Skeleton */}
+                    <div className="w-full h-8 bg-gray-100 rounded-lg mt-1 border border-gray-200/60"></div>
+                </div>
+
+                {/* Price Filter */}
+                <div className="h-4 w-12 bg-gray-200 rounded mt-4 mb-2"></div>
+                <div className="space-y-2 my-2 pb-3 border-b border-gray-100">
+                    <div className="w-full h-2 bg-gray-200 rounded-lg"></div>
+                    <div className="flex justify-between items-center">
+                        <div className="h-3 w-8 bg-gray-200 rounded"></div>
+                        <div className="h-3 w-20 bg-gray-200 rounded"></div>
+                    </div>
+                </div>
+
+                {/* Color Filter */}
+                <div className="h-4 w-16 bg-gray-200 rounded mt-4 mb-2"></div>
+                <div className="flex flex-wrap gap-2.5 my-2 pb-3 border-b border-gray-100">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-200"></div>
+                    ))}
+                </div>
+
+                {/* Size Filter */}
+                <div className="h-4 w-12 bg-gray-200 rounded mt-4 mb-2"></div>
+                <div className="flex flex-wrap gap-2 my-2 pb-3 border-b border-gray-100">
+                    {['w-7', 'w-8', 'w-7', 'w-9', 'w-8'].map((w, i) => (
+                        <div key={i} className={`h-6 ${w} bg-gray-200 rounded`}></div>
+                    ))}
+                </div>
+
+                {/* Brands Filter */}
+                <div>
+                    <div className="h-4 w-16 bg-gray-200 rounded mt-4 mb-2"></div>
+                    <div className="flex flex-col gap-2 pb-1">
+                        {[65, 45, 75, 55].map((widthPercent, i) => (
+                            <div key={i} className="flex items-center gap-2.5 py-0.5">
+                                <div className="w-4 h-4 rounded bg-gray-200 shrink-0"></div>
+                                <div className="h-3.5 bg-gray-200 rounded" style={{ width: `${widthPercent}%` }}></div>
+                            </div>
+                        ))}
+                    </div>
+                    {/* See More Button Skeleton */}
+                    <div className="w-full h-8 bg-gray-100 rounded-lg mt-3 border border-gray-200/60"></div>
                 </div>
             </aside>
         );
@@ -168,7 +185,7 @@ const CategorySidebar = ({
 
     return (
         <aside
-            className="w-full lg:w-1/5 bg-white p-5 rounded-xl shadow h-fit hidden lg:block overflow-visible sticky top-18 "
+            className="w-full lg:w-1/5 bg-white p-5 rounded-xl shadow h-fit hidden lg:block overflow-visible sticky top-18"
         >
             <div className="flex items-center justify-between mb-2">
                 <h2 className="font-bold text-sm tracking-tight text-gray-900">
@@ -228,7 +245,7 @@ const CategorySidebar = ({
                 )}
             </div>
 
-            {/* PRICE RANGE — always fully visible */}
+            {/* PRICE RANGE */}
             <h2 className="font-bold text-sm mt-4 tracking-tight text-gray-900">Price</h2>
             <div className="space-y-2 my-2 pb-3 border-b border-gray-100">
                 <input
@@ -246,7 +263,7 @@ const CategorySidebar = ({
                 </div>
             </div>
 
-            {/* COLOR FILTER — multi-select, always fully visible */}
+            {/* COLOR FILTER */}
             <h2 className="font-bold text-sm mt-4 tracking-tight text-gray-900">
                 Color {selectedColors.length > 0 && <span className="text-emerald-600">({selectedColors.length})</span>}
             </h2>
@@ -276,7 +293,7 @@ const CategorySidebar = ({
                 })}
             </div>
 
-            {/* SIZE FILTER — multi-select, always fully visible */}
+            {/* SIZE FILTER */}
             <h2 className="font-bold text-sm mt-4 tracking-tight text-gray-900">
                 Size {selectedSizes.length > 0 && <span className="text-emerald-600">({selectedSizes.length})</span>}
             </h2>
@@ -296,7 +313,7 @@ const CategorySidebar = ({
                 })}
             </div>
 
-            {/* BRANDS FILTER — multi-select, own independent See More */}
+            {/* BRANDS FILTER */}
             <div>
                 <h2 className="font-bold text-sm mt-4 mb-2 tracking-tight text-gray-900">Brands</h2>
                 <div className="flex flex-col gap-2 pb-1">

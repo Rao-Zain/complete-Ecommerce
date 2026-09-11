@@ -78,9 +78,24 @@ export default function Productdetail() {
 
   // How much the side panel magnifies the lens area. 2.2 means the
   // lens shows a region that's displayed 2.2x larger in the panel.
-  const ZOOM_LEVEL = 2.2;
+ const MIN_ZOOM_LEVEL = 3.5;
+  const MAX_ZOOM_LEVEL = 7;
+  const [zoomLevel, setZoomLevel] = useState(3.5);
 
-  const zoomContainerRef = useRef(null);
+  // Tracks last cursor position so we can re-run updateZoom when the
+  // zoom level changes via the wheel, without needing a new mouse move.
+  const lastMousePos = useRef({ x: 0, y: 0 });
+
+    // Mirrors zoomLevel so the wheel listener effect below doesn't need
+  // zoomLevel in its dependency array (which was causing the native
+  // listener to be removed/re-added on every single scroll tick).
+  const zoomLevelRef = useRef(zoomLevel);
+
+  useEffect(() => {
+    zoomLevelRef.current = zoomLevel;
+  }, [zoomLevel]);
+
+    const zoomContainerRef = useRef(null);
   const [isZooming, setIsZooming] = useState(false);
   const [lensBox, setLensBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [zoomPane, setZoomPane] = useState({
@@ -302,10 +317,12 @@ export default function Productdetail() {
     const container = zoomContainerRef.current;
     if (!container) return;
 
+    lastMousePos.current = { x: clientX, y: clientY };
+
     const rect = container.getBoundingClientRect();
 
-    const lensWidth = rect.width / ZOOM_LEVEL;
-    const lensHeight = rect.height / ZOOM_LEVEL;
+    const lensWidth = rect.width / zoomLevel;
+    const lensHeight = rect.height / zoomLevel;
 
     const cursorX = clientX - rect.left;
     const cursorY = clientY - rect.top;
@@ -325,8 +342,8 @@ export default function Productdetail() {
     setZoomPane({
       width: rect.width,
       height: rect.height,
-      backgroundSize: `${rect.width * ZOOM_LEVEL}px ${rect.height * ZOOM_LEVEL}px`,
-      backgroundPosition: `-${lensLeft * ZOOM_LEVEL}px -${lensTop * ZOOM_LEVEL}px`,
+      backgroundSize: `${rect.width * zoomLevel}px ${rect.height * zoomLevel}px`,
+      backgroundPosition: `-${lensLeft * zoomLevel}px -${lensTop * zoomLevel}px`,
     });
   };
 
@@ -349,6 +366,48 @@ export default function Productdetail() {
   const handleZoomLeave = () => {
     setIsZooming(false);
   };
+
+  const handleZoomWheel = (e) => {
+    if (productImages.length === 0) return;
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+
+    // Stop the page from scrolling while the user zooms in/out.
+    e.preventDefault();
+
+       setZoomLevel((prev) => {
+      const next = prev - e.deltaY * 0.006;
+      return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, next));
+    });
+
+    lastMousePos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  // Re-run updateZoom whenever zoomLevel changes (from the wheel),
+  // using the last known cursor position instead of waiting for
+  // another mousemove event.
+  useEffect(() => {
+    if (isZooming) {
+      updateZoom(lastMousePos.current.x, lastMousePos.current.y);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomLevel]);
+
+  // React's onWheel prop is attached as a passive listener, so
+  // e.preventDefault() inside it silently fails and the page still
+  // scrolls. Attaching the listener manually with { passive: false }
+  // is the only reliable way to actually block page scroll while
+  // zooming.
+   useEffect(() => {
+    const node = zoomContainerRef.current;
+    if (!node) return;
+
+    node.addEventListener("wheel", handleZoomWheel, { passive: false });
+
+    return () => {
+      node.removeEventListener("wheel", handleZoomWheel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isZooming, productImages.length]);
 
   // =========================================================
   // IMAGE CHANGE
@@ -655,7 +714,7 @@ export default function Productdetail() {
                 pane (positioned just outside the image box) isn't
                 clipped by the image's own rounded-corner overflow. */}
             <div className="relative">
-              <div
+                                       <div
                 ref={zoomContainerRef}
                 onMouseEnter={handleZoomEnter}
                 onMouseMove={handleZoomMove}
@@ -673,8 +732,8 @@ export default function Productdetail() {
                 overflow-hidden
                 border
                 border-gray-200
-                group
-                lg:cursor-crosshair`}>
+               group
+                lg:cursor-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22 viewBox=%220 0 28 28%22><circle cx=%2214%22 cy=%2214%22 r=%2211%22 fill=%22white%22 stroke=%22%23222%22 stroke-width=%222%22/><circle cx=%2214%22 cy=%2214%22 r=%222%22 fill=%22%23222%22/><line x1=%2214%22 y1=%224%22 x2=%2214%22 y2=%228%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2214%22 y1=%2220%22 x2=%2214%22 y2=%2224%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%224%22 y1=%2214%22 x2=%228%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2220%22 y1=%2214%22 x2=%2224%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/></svg>')_14_14,zoom-in]`}> 
                 {productImages.length > 0 ? (
                   <>
                     <Swiper
@@ -764,9 +823,9 @@ export default function Productdetail() {
 
                     {/* Lens — the highlighted square on the original
                         image that shows which part is being magnified. */}
-                    {isZooming && (
+                {isZooming && (
                       <div
-                        className="hidden lg:block absolute z-20 border-2 border-white bg-white/25 shadow-[0_0_0_1px_rgba(0,0,0,0.15)] pointer-events-none"
+                        className="hidden lg:block absolute z-20 border-2 border-green-500 bg-green-500/25 pointer-events-none"
                         style={{
                           left: `${lensBox.left}px`,
                           top: `${lensBox.top}px`,
@@ -797,7 +856,7 @@ export default function Productdetail() {
                     backgroundRepeat: "no-repeat",
                     backgroundSize: zoomPane.backgroundSize,
                     backgroundPosition: zoomPane.backgroundPosition,
-                  }}
+                  }}        
                 />
               )}
             </div>
@@ -860,7 +919,7 @@ export default function Productdetail() {
                     flex-shrink-0
                     snap-start
                     transition-all
-                    ${currentIndex === index
+                                       ${activeImage === index
                             ? "border-gray-500 ring-1 ring-gray-400"
                             : "border-gray-300 hover:opacity-80"
                           }
@@ -1152,93 +1211,96 @@ export default function Productdetail() {
             Collapsed by default, expands on "Read Full Description".
         ================================================== */}
 
-        <section className="mt-8 sm:mt-10 lg:mt-12">
-          <div className="rounded-xl  bg-gray-100 p-5 sm:p-6 lg:p-7">
-            {/* Header row: icon + title on the left, badge on the right */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-green-100 text-green-700">
-                  <MdDescription className="w-5 h-5" />
-                </span>
+       <section className="mt-8 sm:mt-10 lg:mt-12">
+  <div className="rounded-xl bg-gray-100 ">
+    {/* Header row: icon + title on the left, badge on the right */}
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-3">
+        <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-100 text-green-700">
+          <MdDescription className="w-5 h-5" />
+        </span>
 
-                <h2 className="text-base sm:text-lg font-bold text-gray-900">
-                  Product Description
-                </h2>
-              </div>
+        <h2 className="text-base sm:text-lg font-bold text-gray-900">
+          Product Description
+        </h2>
+      </div>
 
-              <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium bg-green-100 text-green-700">
-                OVERVIEW
-              </span>
-            </div>
+      <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium bg-green-100 text-green-700">
+        OVERVIEW
+      </span>
+    </div>
 
-            {/* Description content — full HTML from the backend
-                (headings, paragraphs, images, lists, etc). The
-                outer wrapper animates max-height smoothly between
-                a collapsed preview and the full measured height. */}
-            <div className="relative">
-              <div
-                style={{
-                  maxHeight: showFullDescription
-                    ? `${descHeight}px`
-                    : `${COLLAPSED_DESCRIPTION_HEIGHT}px`,
-                }}
-                className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
-              >
-                <div
-                  ref={descriptionRef}
-                  className="product-description-content text-gray-600 text-xs sm:text-sm leading-6 break-words"
-                  dangerouslySetInnerHTML={{
-                    __html: product.description || "",
-                  }}
-                />
-              </div>
+    {/* Description content — full HTML from the backend
+        (headings, paragraphs, images, lists, etc). The
+        outer wrapper animates max-height smoothly between
+        a collapsed preview and the full measured height. */}
+    <div className="relative">
+      <div
+        style={{
+          maxHeight: showFullDescription
+            ? `${descHeight}px`
+            : `${COLLAPSED_DESCRIPTION_HEIGHT}px`,
+        }}
+        className="overflow-hidden transition-[max-height] duration-500 ease-in-out"
+      >
+        <div
+          ref={descriptionRef}
+          className="product-description-content text-gray-600 text-xs sm:text-sm leading-6 break-words"
+          dangerouslySetInnerHTML={{
+            __html: product.description || "",
+          }}
+        />
+      </div>
+    </div>
 
-              {/* Fade-out overlay hints there's more content below,
-                  and fades away as soon as it's expanded. */}
-              {!showFullDescription && (
-                <div
-                  className={`pointer-events-none absolute bottom-0 left-0 right-0 h-10
-                    bg-gradient-to-t from-gray-50 to-transparent
-                    transition-opacity duration-500`}
-                />
-              )}
-            </div>
-
-            {/* Toggle button — only worth showing if there's actually
-                more content than the collapsed preview reveals. */}
-            {product.description && descHeight > COLLAPSED_DESCRIPTION_HEIGHT && (
-              <div className="flex justify-center mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowFullDescription((prev) => !prev)}
-                  className={`
-                    inline-flex items-center gap-1.5
-                    px-4 py-2 rounded-full
-                    bg-green-100 text-green-700
-                    text-xs sm:text-sm font-medium
-                    hover:bg-green-200 cursor-pointer
-                    transition-colors duration-200
-                  `}
-                >
-                  {showFullDescription ? "Show Less" : "Read Full Description"}
-                  <MdKeyboardArrowDown
-                    className={`w-4 h-4 transition-transform duration-500 ease-in-out ${
-                      showFullDescription ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
+    {/* Toggle button — only worth showing if there's actually
+        more content than the collapsed preview reveals. */}
+    {product.description && descHeight > COLLAPSED_DESCRIPTION_HEIGHT && (
+      <div className="flex justify-center mt-4">
+        <button
+          type="button"
+          onClick={() => setShowFullDescription((prev) => !prev)}
+          className={`
+            inline-flex items-center gap-1.5
+            px-4 py-2 rounded-full
+            bg-gray-900 text-white
+            text-xs sm:text-sm font-medium
+            hover:bg-black cursor-pointer
+            transition-colors duration-200
+          `}
+        >
+          {showFullDescription ? "Show Less" : "Read Full Description"}
+          <MdKeyboardArrowDown
+            className={`w-4 h-4 transition-transform duration-500 ease-in-out ${
+              showFullDescription ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      </div>
+    )}
+  </div>
+</section>
         {/* Scoped styling for the raw HTML injected via
             dangerouslySetInnerHTML above. Since there's no
             tailwind.config.js / typography plugin, headings,
             lists, images, and links from the backend are styled
             here instead — :global() lets styled-jsx reach inside
             content it didn't compile itself. */}
-        <style jsx>{`
+               <style jsx>{`
+          /* Swiper's grabCursor prop sets cursor:grab on its own
+             internal element, which overrides our custom zoom
+             cursor on the parent container since it's more deeply
+             nested. Force it back to our cursor at lg breakpoint,
+             where the zoom feature is active. */
+          @media (min-width: 1024px) {
+            :global(.product-main-swiper.swiper-grab-cursor) {
+              cursor: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22 viewBox=%220 0 28 28%22><circle cx=%2214%22 cy=%2214%22 r=%2211%22 fill=%22white%22 stroke=%22%23222%22 stroke-width=%222%22/><circle cx=%2214%22 cy=%2214%22 r=%222%22 fill=%22%23222%22/><line x1=%2214%22 y1=%224%22 x2=%2214%22 y2=%228%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2214%22 y1=%2220%22 x2=%2214%22 y2=%2224%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%224%22 y1=%2214%22 x2=%228%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2220%22 y1=%2214%22 x2=%2224%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/></svg>') 14 14, zoom-in !important;
+            }
+            :global(.product-main-swiper.swiper-grab-cursor.swiper-grabbing) {
+              cursor: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2228%22 height=%2228%22 viewBox=%220 0 28 28%22><circle cx=%2214%22 cy=%2214%22 r=%2211%22 fill=%22white%22 stroke=%22%23222%22 stroke-width=%222%22/><circle cx=%2214%22 cy=%2214%22 r=%222%22 fill=%22%23222%22/><line x1=%2214%22 y1=%224%22 x2=%2214%22 y2=%228%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2214%22 y1=%2220%22 x2=%2214%22 y2=%2224%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%224%22 y1=%2214%22 x2=%228%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/><line x1=%2220%22 y1=%2214%22 x2=%2224%22 y2=%2214%22 stroke=%22%23222%22 stroke-width=%222%22/></svg>') 14 14, zoom-in !important;
+            }
+          }
+
           .product-description-content :global(h1),
           .product-description-content :global(h2),
           .product-description-content :global(h3),

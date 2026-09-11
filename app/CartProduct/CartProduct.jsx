@@ -320,7 +320,7 @@ export default function CartPage() {
 
     return (
         <main className="min-h-screen bg-gray-50 py-10 ">
-            <div className="container px-4 mx-auto sm:px-6 lg:px-10 max-w-7xl">
+            <div className="container mx-auto px-3  sm:px-4 ">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-gray-800">My Cart</h1>
                     <p className="text-gray-500 text-sm mt-1">Review your items before checkout</p>
@@ -428,11 +428,11 @@ export default function CartPage() {
                             </h2>
                             <div className="flex justify-between text-xs text-gray-500 mb-3">
                                 <span>Total Items</span>
-                                <span className="font-bold text-gray-800">{cartItems.length}</span>
+                                <span className="font-bold text-gray-800 bg-gray-100 py-1 px-2 rounded">{cartItems.length}</span>
                             </div>
-                            <div className="flex justify-between text-xs text-gray-500 mb-4">
+                            <div className="flex justify-between text-xs text-gray-500 mb-4 ">
                                 <span>Total Quantity</span>
-                                <span className="font-bold text-gray-800">{totalQty}</span>
+                                <span className="font-bold text-gray-800 bg-gray-100 py-1 px-2 rounded   ">{totalQty}</span>
                             </div>
                             <div className="flex justify-between items-center text-base font-bold text-gray-800 border-t border-gray-100 pt-4 mb-6">
                                 <span>Total Amount</span>

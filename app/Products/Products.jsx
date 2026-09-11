@@ -5,6 +5,7 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import ProductCardContent from "@/app/ProductCardContent/ProductCardContent";
 
 // Generates and persists a random guest token the first time a visitor
 // with no user token loads the page, so their activity can be tracked
@@ -40,6 +41,37 @@ function SkeletonCard() {
       </div>
     </div>
   );
+}
+
+// Map a raw API product (variants[], avg_rating, etc.) into the flat
+// shape ProductCardContent expects. This endpoint returns a precomputed
+// `avg_rating` instead of a `reviews[]` array (unlike Featured/Handpicked/
+// FlashSales), so rating is read directly rather than derived.
+function mapToCardProduct(product) {
+  const firstVariant = product.variants?.[0];
+  const price = firstVariant ? Number(firstVariant.price) : 0;
+  const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
+
+  const discountPercent =
+    cutPrice !== null && cutPrice > price
+      ? Math.round(((cutPrice - price) / cutPrice) * 100)
+      : product.discount_percent || null;
+
+  const totalStock =
+    product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+  const inStock = totalStock > 0;
+
+  return {
+    title: product.name,
+    rating: product.avg_rating ?? 0,
+    ratingCount: product.review_count ?? product.reviews_count ?? 0,
+    sold: product.sold_count || 0,
+    price,
+    originalPrice: cutPrice && cutPrice > price ? cutPrice : undefined,
+    discountPercent: discountPercent || undefined,
+    inStock,
+    freeDelivery: product.free_delivery ?? inStock,
+  };
 }
 
 function Products() {
@@ -276,16 +308,7 @@ function Products() {
         {!initialLoading && products.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
             {products.map((product) => {
-
-              const firstVariant = product.variants?.[0];
-              const price = firstVariant ? Number(firstVariant.price) : null;
-              const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
-
-              const totalStock =
-                product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
-
-              const avgRating = product.avg_rating ?? 0;
-
+              const cardProduct = mapToCardProduct(product);
               const imagePath = product.main_variant_image?.image_path;
 
               // naya: is product ka wishlist status
@@ -297,97 +320,44 @@ function Products() {
                   key={product.id}
                   className="group bg-white rounded-lg sm:rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between cursor-pointer"
                 >
-                  <div>
-                    {/* Image & Badges Container */}
-                    {/* ⬇️ overflow-hidden add kiya taake zoomed image apni box se bahar na nikle */}
-                    <div className="relative bg-gray-100 lg:h-56 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
-                      <button
-                        onClick={(e) => toggleWishlist(e, product.id)}
-                        className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white p-1 sm:p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
-                        title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  {/* Image & Badges Container */}
+                  {/* ⬇️ overflow-hidden add kiya taake zoomed image apni box se bahar na nikle */}
+                  <div className="relative bg-gray-100 lg:h-56 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
+                    <button
+                      onClick={(e) => toggleWishlist(e, product.id)}
+                      className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white p-1 sm:p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
+                      title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                    >
+                      <svg
+                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                          isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
+                        }`}
+                        viewBox="0 0 24 24"
                       >
-                        <svg
-                          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                            isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
-                          }`}
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                          />
-                        </svg>
-                      </button>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </button>
 
-                      <div className="w-full h-full relative">
-                        {imagePath && (
-                          <Image
-                            src={`${IMAGE_BASE_URL}/${imagePath}`}
-                            alt={product.name}
-                            fill
-                            unoptimized
-                            sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                            // ⬇️ zoom transition yahan lagi hai
-                            className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="p-2 sm:p-3">
-                      <h3 className="font-semibold text-gray-900 text-xs sm:text-sm truncate group-hover:text-blue-600 transition-colors">
-                        {product.name}
-                      </h3>
-                      <p
-                        className="text-[10px] sm:text-xs text-gray-500 mt-0.5 line-clamp-1"
-                        dangerouslySetInnerHTML={{ __html: product.description || "" }}
+                    {imagePath && (
+                      <Image
+                        src={`${IMAGE_BASE_URL}/${imagePath}`}
+                        alt={product.name}
+                        fill
+                        unoptimized
+                        sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                        // ⬇️ zoom transition yahan lagi hai
+                        className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
                       />
-
-                      {/* Rating */}
-                      <div className="flex items-center mt-1.5 sm:mt-2">
-                        {[...Array(5)].map((_, i) => (
-                          <svg
-                            key={i}
-                            className={`w-3 h-3 sm:w-4 sm:h-4 ${i < Math.floor(avgRating)
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300 fill-gray-200"
-                              }`}
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                          </svg>
-                        ))}
-                        <span className="text-[9px] sm:text-[10px] text-gray-500 ml-1">
-                          ({avgRating.toFixed(1)})
-                        </span>
-                      </div>
-
-                      {/* Pricing & Stock */}
-                      <div className="mt-2 ">
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="flex flex-col">
-                            {price !== null && (
-                              <span className="text-emerald-600 font-bold text-sm sm:text-lg leading-tight">
-                                Rs {price.toLocaleString()}
-                              </span>
-                            )}
-                            {cutPrice !== null && cutPrice > price && (
-                              <span className="text-gray-400 text-[9px] sm:text-[10px] line-through leading-tight">
-                                Rs {cutPrice.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-
-                          <span className="bg-emerald-50 text-emerald-700 mt-3 text-[8px] sm:text-[9px] font-medium px-1 sm:px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap self-start">
-                            {totalStock} In Stock
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
+
+                  {/* Shared, consistent content section — same component used on every page */}
+                  <ProductCardContent product={cardProduct} />
                 </Link>
               );
             })}

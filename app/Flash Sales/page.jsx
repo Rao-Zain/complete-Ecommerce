@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { Zap, Heart } from "lucide-react";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
+import ProductCardContent from "@/app/ProductCardContent/ProductCardContent";
+import HoverImageScroll from "@/app/HoverImageScroll/HoverImageScroll";
 
 // Shimmer / skeleton card
 function SkeletonCard() {
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="h-48 sm:h-56 w-full animate-pulse bg-gray-200" />
-            <div className="p-3 sm:p-4 space-y-2">
+            <div className="aspect-square w-full animate-pulse bg-gray-200" />
+            <div className="p-1.5 sm:p-2.5 space-y-2">
                 <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
                 <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
@@ -21,6 +23,68 @@ function SkeletonCard() {
             </div>
         </div>
     );
+}
+
+// Map a raw API product (variants[], reviews[], etc.) into the flat
+// shape ProductCardContent expects. Keeping this in one place means
+// every page using ProductCardContent can normalize its own API
+// response the same way, even if the raw shapes differ.
+function mapToCardProduct(product) {
+    const firstVariant = product.variants?.[0];
+    const price = firstVariant ? Number(firstVariant.price) : 0;
+    const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
+
+    const discountPercent =
+        cutPrice !== null && cutPrice > price
+            ? Math.round(((cutPrice - price) / cutPrice) * 100)
+            : product.discount_percent || null;
+
+    const totalStock =
+        product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+    const inStock = totalStock > 0;
+
+    const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
+    const avgRating =
+        reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+
+    return {
+        title: product.name,
+        rating: avgRating,
+        ratingCount: reviews.length,
+        sold: product.sold_count || 0,
+        price,
+        originalPrice: cutPrice && cutPrice > price ? cutPrice : undefined,
+        discountPercent: discountPercent || undefined,
+        inStock,
+        freeDelivery: product.free_delivery ?? inStock,
+    };
+}
+
+// Build the list of image URLs for the hover-scrub gallery.
+// TODO: confirm this against your actual API response shape — check
+// your network tab for a flash-sale product and see where the second
+// image really lives (e.g. product.images[], or per-variant images
+// like variant.images[]). Adjust the field names below to match.
+// Falls back to just the single main_variant_image if nothing else
+// is found, so the card still renders one static image safely.
+function getProductImages(product) {
+    const fromVariants =
+        product.variants
+            ?.flatMap((v) => v.images?.map((img) => img.image_path) || [])
+            .filter(Boolean) || [];
+
+    const fromGallery =
+        product.images?.map((img) => img.image_path || img).filter(Boolean) || [];
+
+    const paths = [...new Set([...fromGallery, ...fromVariants])];
+
+    if (paths.length === 0 && product.main_variant_image?.image_path) {
+        paths.push(product.main_variant_image.image_path);
+    }
+
+    return paths.map((path) => `${IMAGE_BASE_URL}/${path}`);
 }
 
 const FlashSales = () => {
@@ -177,126 +241,47 @@ const FlashSales = () => {
                 {!loading && products.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                         {products.map((product) => {
-                            const firstVariant = product.variants?.[0];
-                            const price = firstVariant ? Number(firstVariant.price) : null;
-                            const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
-
-                            const discountPercent =
-                                price !== null && cutPrice !== null && cutPrice > price
-                                    ? Math.round(((cutPrice - price) / cutPrice) * 100)
-                                    : product.discount_percent || null;
-
-                            const totalStock =
-                                product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
-
-                            const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
-                            const avgRating =
-                                reviews.length > 0
-                                    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-                                    : 0;
-
-                            const imagePath = product.main_variant_image?.image_path;
+                            const cardProduct = mapToCardProduct(product);
+                            const images = getProductImages(product);
                             const isWishlisted = wishlistIds.includes(product.id);
 
                             return (
                                 <Link
                                     href={`/Productdetail/${product.slug}`}
                                     key={product.id}
-                                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 flex flex-col"
+                                    className="group bg-white rounded-sm sm:rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition duration-300 relative flex flex-col h-full"
                                 >
-                                    {/* Image */}
-                                    <div className="relative bg-gray-100 h-52  w-full overflow-hidden">
-                                        {discountPercent !== null && (
-                                            <span className="absolute top-2 left-2 flex items-center gap-1 bg-orange-500 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded z-10">
-                                                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                                                    <path d="M13 2L3 14h7l-1 8 11-14h-8l1-6z" />
-                                                </svg>
-                                                {discountPercent}% OFF
-                                            </span>
-                                        )}
+                                    {/* Discount ribbon */}
+                                    {cardProduct.discountPercent && (
+                                        <div className="absolute top-2 -left-1 z-10 bg-gradient-to-r from-orange-600 to-amber-500 text-white pl-3 pr-3.5 py-1 rounded-r-full text-[10px] sm:text-[11px] font-extrabold shadow-md flex items-center gap-1 tracking-wide">
+                                            <Zap className="w-3 h-3 text-yellow-200 fill-yellow-200" />
+                                            <span>{cardProduct.discountPercent}% OFF</span>
+                                        </div>
+                                    )}
 
+                                    {/* Image with hover-scrub gallery */}
+                                    <div className="relative">
                                         <button
                                             onClick={(e) => toggleWishlist(e, product.id)}
-                                            className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
+                                            className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-white rounded-full shadow z-10 hover:bg-gray-50 transition p-1.5"
                                             title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                                         >
-                                            <svg
-                                                className={`w-4 h-4 ${
-                                                    isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
+                                            <Heart
+                                                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition duration-200 ${
+                                                    isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-gray-600"
                                                 }`}
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                                />
-                                            </svg>
+                                            />
                                         </button>
 
-                                        {imagePath && (
-                                            <Image
-                                                src={`${IMAGE_BASE_URL}/${imagePath}`}
-                                                alt={product.name}
-                                                fill
-                                                unoptimized
-                                                sizes="(max-width: 480px) 50vw, (max-width: 640px) 33vw, (max-width: 1024px) 25vw, 16vw"
-                                                className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
-                                            />
-                                        )}
-                                    </div>
-
-                                    {/* Info */}
-                                    <div className="p-3 sm:p-4 flex flex-col flex-grow">
-                                        <h4 className="font-semibold text-sm sm:text-base text-gray-900 truncate group-hover:text-black capitalize">
-                                            {product.name}
-                                        </h4>
-                                        <p
-                                            className="text-xs sm:text-sm text-gray-500 mt-0.5 line-clamp-1"
-                                            dangerouslySetInnerHTML={{ __html: product.description || "" }}
+                                        <HoverImageScroll
+                                            images={images}
+                                            alt={product.name}
+                                            className="bg-gray-100 aspect-square w-full"
                                         />
-
-                                        {/* Rating */}
-                                        <div className="flex items-center mt-1.5">
-                                            {[...Array(5)].map((_, i) => (
-                                                <svg
-                                                    key={i}
-                                                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
-                                                        i < Math.floor(avgRating)
-                                                            ? "text-yellow-400 fill-yellow-400"
-                                                            : "text-gray-300 fill-gray-200"
-                                                    }`}
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                                </svg>
-                                            ))}
-                                            <span className="text-xs text-gray-500 ml-1">
-                                                ({avgRating.toFixed(1)})
-                                            </span>
-                                        </div>
-
-                                        {/* Price + Stock */}
-                                        <div className="mt-2 flex items-center justify-between gap-1">
-                                            <div className="flex flex-col">
-                                                {price !== null && (
-                                                    <span className="text-emerald-600 font-bold text-base sm:text-lg leading-tight">
-                                                        Rs {price.toLocaleString()}
-                                                    </span>
-                                                )}
-                                                {cutPrice !== null && cutPrice > price && (
-                                                    <span className="text-gray-400 text-xs line-through leading-tight">
-                                                        Rs {cutPrice.toLocaleString()}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <span className="bg-emerald-100 rounded-full text-emerald-700 text-[10px] sm:text-xs font-medium px-2 py-0.5 border border-emerald-100 whitespace-nowrap">
-                                                <span className="text-emerald-800 font-bold">{totalStock}</span> In Stock
-                                            </span>
-                                        </div>
                                     </div>
+
+                                    {/* Shared, consistent content section — same component used on every page */}
+                                    <ProductCardContent product={cardProduct} />
                                 </Link>
                             );
                         })}
