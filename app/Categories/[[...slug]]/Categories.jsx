@@ -269,7 +269,7 @@ const CategoriesPage = () => {
                             </h3>
 
                             {loading ? (
-                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
+                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
                                     {Array.from({ length: 10 }).map((_, i) => (
                                         <div key={i} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                                             <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
@@ -283,7 +283,7 @@ const CategoriesPage = () => {
                             ) : products.length === 0 ? (
                                 <p className="text-gray-500 text-sm">No products found in this category.</p>
                             ) : (
-                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
+                                <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
                                     {products.map((product) => (
                                         <ProductCard key={product.id} product={product} />
                                     ))}

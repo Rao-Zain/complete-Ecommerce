@@ -692,7 +692,7 @@ export default function CheckoutPage() {
       </div>
 
       {/* MAIN */}
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="container mx-auto px-4">
 
         <div className="grid lg:grid-cols-3 gap-5 items-start">
 

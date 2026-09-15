@@ -1,10 +1,27 @@
 import Image from 'next/image';
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
+// 1. Fetch Store Settings to check visibility flags
+async function getStoreSettings() {
+  try {
+    const res = await fetch("https://stores.hexalogicx.com/api/store-settings", {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json?.data ?? json;
+  } catch (error) {
+    console.error("Failed to fetch store settings:", error);
+    return null;
+  }
+}
+
+// 2. Fetch Banners
 async function getBanners() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/banner/main`, {
-      // har 60 seconds baad revalidate ho, ya cache: 'no-store' bhi kar sakte hain
       next: { revalidate: 60 },
     });
 
@@ -18,7 +35,6 @@ async function getBanners() {
   }
 }
 
-// API se "40% OFF" jaisi description string se sirf number nikalne k liye
 function extractDiscount(description) {
   if (!description) return null;
   const match = description.match(/(\d+)\s*%/);
@@ -26,43 +42,32 @@ function extractDiscount(description) {
 }
 
 async function Banners() {
-  const rawBanners = await getBanners();
+  // Donon APIs ko parallel fetch kar lete hain performance k liye
+  const [settings, rawBanners] = await Promise.all([
+    getStoreSettings(),
+    getBanners(),
+  ]);
 
-  // API response ko sort_order k hisab se sort kar dein taake order guaranteed rahe
+  // Handle both boolean (true) and integer/string representation (1 / "1")
+  const isMidBannersVisible =
+    settings?.show_mid_banners === true ||
+    settings?.show_mid_banners === 1 ||
+    settings?.show_mid_banners === "1";
+
+  // Agar API se false/0 aye to component kuch render na kare
+  if (!isMidBannersVisible) {
+    return null;
+  }
+
   const sortedBanners = [...rawBanners].sort(
     (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
   );
 
-  // API koi "position" field nahi deti, is liye sort_order k basis par
-  // pehla banner "large" aur agle do "small" maan k chalte hain
   const apiLarge = sortedBanners[0];
   const apiSmall = sortedBanners.slice(1, 3);
 
-  const fallbackLarge = {
-    id: "fallback-large",
-    title: "Summer Collection",
-    subtitle: "Up to 50% OFF",
-    discount: "70",
-    image: "/img7.jfif",
-    buttonText: "Shop Now",
-  };
+  
 
-  const fallbackSmall = [
-    {
-      id: "fallback-small-1",
-      title: "New Arrival",
-      subtitle: "Dress, Pouch, Hat, Sandals",
-      discount: "40",
-      image: "/banners/1788430203_1721825245.png",
-    },
-    {
-      id: "fallback-small-2",
-      title: "Exclusive Deals",
-      image: "/banners/1788430306_1721825269.png",
-    },
-  ];
-
-  // API field names (name/description) ko component ke expected shape (title/subtitle) mein map karo
   const largeBanner = apiLarge
     ? {
         id: apiLarge.id,
@@ -86,8 +91,6 @@ async function Banners() {
         }))
       : fallbackSmall;
 
-  // Image path build karne ka helper — agar image already full URL hai tou wahi use ho,
-  // warna IMAGE_BASE_URL k sath jor dein
   const getImageUrl = (path) => {
     if (!path) return "/placeholder.jpg";
     if (path.startsWith("http")) return path;

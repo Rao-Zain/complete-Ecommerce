@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
+import { API_BASE_URL } from "@/lib/config";
 import Link from "next/link";
 import ProductCardContent from "@/app/ProductCardContent/ProductCardContent";
+import ProductCardImage from "@/app/ProductCardImage/ProductCardImage";
 
 // Generates and persists a random guest token
 function getOrCreateGuestToken() {
@@ -25,7 +25,7 @@ const PER_PAGE = 12;
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      <div className="h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse bg-gray-200" />
+      <div className="aspect-square w-full animate-pulse bg-gray-200" />
       <div className="p-2 sm:p-3 space-y-2">
         <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
         <div className="h-3 w-full animate-pulse rounded bg-gray-200" />
@@ -39,35 +39,40 @@ function SkeletonCard() {
   );
 }
 
-// Map a raw API product (variants[], reviews[], etc.) into the flat
-// shape ProductCardContent expects. Kept local to this page so the
-// "for-you" endpoint's shape can be normalized independently of any
-// other page's mapper.
+// Map a raw API product (variants[], reviews[], etc.) into the flat shape ProductCardContent expects
 function mapToCardProduct(product) {
   const firstVariant = product.variants?.[0];
-  const price = firstVariant ? Number(firstVariant.price) : 0;
-  const cutPrice = firstVariant ? Number(firstVariant.cut_price) : null;
+  const price = firstVariant ? Number(firstVariant.price) : Number(product.price || 0);
+  const cutPrice = firstVariant?.cut_price ? Number(firstVariant.cut_price) : (product.cut_price ? Number(product.cut_price) : null);
 
   const discountPercent =
     cutPrice !== null && cutPrice > price
       ? Math.round(((cutPrice - price) / cutPrice) * 100)
-      : product.discount_percent || null;
+      : (product.discount_percent ? Number(product.discount_percent) : null);
 
   const totalStock =
-    product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+    product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) ?? (product.stock || 0);
   const inStock = totalStock > 0;
 
   const reviews = (product.reviews || []).filter((r) => r.is_approved === 1);
   const avgRating =
-    reviews.length > 0
+    product.avg_rating !== undefined && product.avg_rating !== null
+      ? Number(product.avg_rating)
+      : reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : 0;
+
+  const ratingCount =
+    product.total_reviews ??
+    product.reviews_count ??
+    product.review_count ??
+    reviews.length;
 
   return {
     title: product.name,
     rating: avgRating,
-    ratingCount: reviews.length,
-    sold: product.sold_count || 0,
+    ratingCount: Number(ratingCount) || 0,
+    sold: Number(product.order_items_count ?? product.sold_count ?? product.sold ?? 0),
     price,
     originalPrice: cutPrice && cutPrice > price ? cutPrice : undefined,
     discountPercent: discountPercent || undefined,
@@ -95,85 +100,6 @@ function Handpicked() {
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
-
-  const [wishlistIds, setWishlistIds] = useState([]);
-
-  const getAuthToken = () => {
-    if (typeof window === "undefined") return null;
-    let rawToken = localStorage.getItem("token");
-    if (!rawToken) return null;
-    rawToken = rawToken.trim();
-    if (rawToken.startsWith('"') && rawToken.endsWith('"')) {
-      rawToken = rawToken.slice(1, -1);
-    }
-    return rawToken;
-  };
-
-  useEffect(() => {
-    const loadWishlist = () => {
-      const stored = JSON.parse(localStorage.getItem("wishlist")) || [];
-      setWishlistIds(stored);
-    };
-    loadWishlist();
-    window.addEventListener("wishlistUpdated", loadWishlist);
-    window.addEventListener("storage", loadWishlist);
-    return () => {
-      window.removeEventListener("wishlistUpdated", loadWishlist);
-      window.removeEventListener("storage", loadWishlist);
-    };
-  }, []);
-
-  const toggleWishlist = async (e, productId) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const userId = localStorage.getItem("userId");
-    const token = getAuthToken();
-
-    if (!userId || !token) {
-      alert("Wishlist mein add karne ke liye pehle login karein");
-      return;
-    }
-
-    const numericUserId = Number(userId);
-    const numericProductId = Number(productId);
-
-    const isWishlisted = wishlistIds.includes(numericProductId);
-    const updated = isWishlisted
-      ? wishlistIds.filter((id) => id !== numericProductId)
-      : [...wishlistIds, numericProductId];
-
-    setWishlistIds(updated);
-    localStorage.setItem("wishlist", JSON.stringify(updated));
-    window.dispatchEvent(new Event("wishlistUpdated"));
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/wish-list-add`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: numericUserId,
-          product_id: numericProductId,
-        }),
-      });
-
-      const resData = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        console.error("Wishlist API error:", res.status, resData);
-        throw new Error(resData.message || `Wishlist update failed (${res.status})`);
-      }
-    } catch (err) {
-      console.error("Wishlist toggle error:", err);
-      setWishlistIds(wishlistIds);
-      localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
-      window.dispatchEvent(new Event("wishlistUpdated"));
-    }
-  };
 
   const fetchProducts = useCallback(async (pageToFetch, isInitial) => {
     if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
@@ -282,7 +208,7 @@ function Handpicked() {
 
         {/* Initial Skeleton */}
         {initialLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5">
             {Array.from({ length: PER_PAGE }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -303,11 +229,9 @@ function Handpicked() {
 
         {/* Products Grid */}
         {!initialLoading && products.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5">
             {products.map((product) => {
               const cardProduct = mapToCardProduct(product);
-              const imagePath = product.main_variant_image?.image_path;
-              const isWishlisted = wishlistIds.includes(product.id);
 
               return (
                 <Link
@@ -315,47 +239,13 @@ function Handpicked() {
                   key={product.id}
                   className="group bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between h-full w-full"
                 >
-                  {/* Image container */}
-                  <div className="relative bg-gray-100 h-32 xs:h-36 sm:h-44 md:h-48 w-full overflow-hidden">
-                    {product.product_type === "featured" && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-yellow-500 text-white text-[8px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider z-10">
-                        Featured
-                      </span>
-                    )}
+                  {/* Shared Image Component (Hover-Scrub + Badges + WishlistButton) */}
+                  <ProductCardImage
+                    product={product}
+                    
+                  />
 
-                    <button
-                      onClick={(e) => toggleWishlist(e, product.id)}
-                      className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow hover:bg-gray-100 text-gray-500 hover:text-red-500 transition z-10"
-                      title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
-                    >
-                      <svg
-                        className={`w-4 h-4 ${
-                          isWishlisted ? "fill-red-500 stroke-red-500" : "fill-none stroke-current"
-                        }`}
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                    </button>
-
-                    {imagePath && (
-                      <Image
-                        src={`${IMAGE_BASE_URL}/${imagePath}`}
-                        alt={product.name}
-                        fill
-                        unoptimized
-                        sizes="(max-width: 480px) 50vw, (max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                        className="object-cover object-center transition-transform duration-300 ease-out group-hover:scale-110"
-                      />
-                    )}
-                  </div>
-
-                  {/* Shared, consistent content section — same component used on every page */}
+                  {/* Shared Card Content Section */}
                   <ProductCardContent product={cardProduct} />
                 </Link>
               );

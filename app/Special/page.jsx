@@ -1,6 +1,24 @@
 import Image from 'next/image';
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
+// 1. Fetch Store Settings to verify visibility flag
+async function getStoreSettings() {
+  try {
+    const res = await fetch("https://stores.hexalogicx.com/api/store-settings", {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    return json?.data ?? json;
+  } catch (error) {
+    console.error("Failed to fetch store settings:", error);
+    return null;
+  }
+}
+
+// 2. Fetch Featured Banner Data
 async function getFeaturedBanner() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/banner/featured`, {
@@ -18,28 +36,37 @@ async function getFeaturedBanner() {
 }
 
 async function Special() {
-  const data = await getFeaturedBanner();
+  const [settings, data] = await Promise.all([
+    getStoreSettings(),
+    getFeaturedBanner(),
+  ]);
 
-  // API doesn't return a badge or a CTA link, so these stay static.
+  const isFeaturedBannerVisible =
+    settings?.show_featured_banner === true ||
+    settings?.show_featured_banner === 1 ||
+    settings?.show_featured_banner === "1";
+
+  // Hide completely if setting is disabled or if banner data fails to return
+  if (!isFeaturedBannerVisible || !data) {
+    return null;
+  }
+
   const badge = "Special Selection";
+  const heading = data.name;
+  const description = data.description;
+  const buttonText = data.button_name || "Explore Featured Range";
+  const link = data.link || "#";
 
-  const heading = data?.name || "Discover Excellence in Every Detail";
-  const description =
-    data?.description ||
-    "Our handpicked featured collection brings you unmatched quality, trendsetting designs, and everyday reliability. Upgrade your style and elevate your lifestyle today.";
-  const buttonText = data?.button_name || "Explore Featured Range";
-  const link = "#"; // no link field in the API response — update if you add one
-
-  const bgImage = data?.image
+  const bgImage = data.image
     ? data.image.startsWith("http")
       ? data.image
       : `${IMAGE_BASE_URL}/${data.image}`
-    : "/prse.jpg";
+    : "";
 
   return (
     <section
       className="relative w-full bg-zinc-900 bg-fixed bg-cover bg-center overflow-hidden py-12 sm:py-16 px-4 sm:px-6 lg:px-8"
-      style={{ backgroundImage: `url('${bgImage}')` }}
+      style={{ backgroundImage: bgImage ? `url('${bgImage}')` : undefined }}
     >
       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-900/80 to-zinc-950/60 z-0"></div>
 
@@ -51,13 +78,17 @@ async function Special() {
           {badge}
         </span>
 
-        <h2 className="text-xl sm:text-3xl md:text-5xl font-extrabold text-white/100 tracking-tight mb-1 sm:mb-4">
-          {heading}
-        </h2>
+        {heading && (
+          <h2 className="text-xl sm:text-3xl md:text-5xl font-extrabold text-white/100 tracking-tight mb-1 sm:mb-4">
+            {heading}
+          </h2>
+        )}
 
-        <p className="text-gray-300 text-[11px] sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-none">
-          {description}
-        </p>
+        {description && (
+          <p className="text-gray-300 text-[11px] sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-none">
+            {description}
+          </p>
+        )}
 
         <div className="mt-6">
           <a href={link}>

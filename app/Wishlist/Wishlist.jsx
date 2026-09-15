@@ -30,7 +30,7 @@ function WishlistItemSkeleton() {
 
 function WishlistShimmer() {
   return (
-    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen max-w-5xl">
+    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen ">
       <div className="text-center mb-10">
         <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mx-auto mb-2.5" />
         <div className="h-3.5 w-72 bg-gray-200 rounded animate-pulse mx-auto" />
@@ -217,7 +217,7 @@ const Wishlist = () => {
   if (isAuthed === false) {
     return (
       <div className="bg-gray-100">
-      <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-8 flex items-center justify-center min-h-[60vh] max-w-5xl">
+      <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-8 flex items-center justify-center min-h-[60vh] ">
         <div className="max-w-md w-full mx-auto text-center bg-white/50 border border-gray-100 rounded-2xl shadow-sm p-6">
           <div className="w-14 h-14 mx-auto rounded-full bg-pink-50 flex items-center justify-center mb-3">
             <Heart size={26} className="text-pink-500" fill="currentColor" />
@@ -250,7 +250,7 @@ const Wishlist = () => {
   }
 
   return (
-    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen max-w-5xl">
+    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen">
       {/* Agar wishlist empty hai toh heading hide ho jayegi, sirf items hone par dikhegi */}
       {wishlist.length > 0 && (
         <div className="text-center mb-10">

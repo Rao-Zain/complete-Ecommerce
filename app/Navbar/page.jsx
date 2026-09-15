@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+import ImageSearchModal from "@/app/ImageSearchModal/ImageSearchModal";
+import SearchBar from "@/app/Navbar/SearchBar"; // <-- Import the new component
 import {
   FaShoppingCart,
   FaBars,
@@ -15,31 +16,20 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaSearch,
-  FaQrcode,
   FaSignInAlt,
   FaUserPlus,
   FaHome,
   FaShoppingBag,
   FaEye,
-  FaEyeSlash
+  FaEyeSlash,
 } from "react-icons/fa";
 import { API_BASE_URL } from "@/lib/config";
 
 const Navbar = () => {
   const router = useRouter();
-
-  // Initialize with cached storeSettings to eliminate the initial logo flash
-  const [storeSettings, setStoreSettings] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("storeSettings");
-        return cached ? JSON.parse(cached) : null;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [storeSettings, setStoreSettings] = useState(null);
 
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -47,60 +37,28 @@ const Navbar = () => {
   const [wishlistCount, setWishlistCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
 
-  // Initialize user and auth state directly from localStorage if present
-  const [user, setUser] = useState(() => {
-    if (typeof window !== "undefined") {
-      const storedName = localStorage.getItem("userName") || localStorage.getItem("name") || "Guest";
-      const storedEmail = localStorage.getItem("email") || "guest@example.com";
-      return { name: storedName, email: storedEmail };
-    }
-    return { name: "Guest", email: "guest@example.com" };
-  });
+  const [user, setUser] = useState({ name: "Guest", email: "guest@example.com" });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    if (typeof window !== "undefined") {
-      return !!localStorage.getItem("token");
-    }
-    return false;
-  });
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Categories states with cache initialization to prevent shift in the lower nav
-  const [categoriesData, setCategoriesData] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("navbarCategories");
-        return cached ? JSON.parse(cached) : [];
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
+  const [categoriesData, setCategoriesData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [activeMain, setActiveMain] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
 
-  // Mobile drawer category accordion state
   const [mobileOpenCategoryId, setMobileOpenCategoryId] = useState(null);
 
-  // Dropdown & Modal States
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
 
-  // Login Form States
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // Register Form States
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -109,7 +67,19 @@ const Navbar = () => {
   const [regLoading, setRegLoading] = useState(false);
   const [regFieldErrors, setRegFieldErrors] = useState({});
 
-  // Fetch Categories
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const cachedSettings = localStorage.getItem("storeSettings");
+      if (cachedSettings) setStoreSettings(JSON.parse(cachedSettings));
+
+      const cachedCategories = localStorage.getItem("navbarCategories");
+      if (cachedCategories) setCategoriesData(JSON.parse(cachedCategories));
+    } catch (e) {
+      console.error("Cache read error:", e);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -129,7 +99,6 @@ const Navbar = () => {
     fetchCategories();
   }, []);
 
-  // Fetch Store Settings
   useEffect(() => {
     const fetchStoreSettings = async () => {
       try {
@@ -153,7 +122,6 @@ const Navbar = () => {
     return `${API_BASE_URL}/storage/${cleanPath}`;
   };
 
-  // Synchronize User & Auth State
   useEffect(() => {
     const loadUserData = () => {
       const token = localStorage.getItem("token");
@@ -174,7 +142,6 @@ const Navbar = () => {
     };
   }, []);
 
-  // Wishlist Counter
   useEffect(() => {
     const updateCount = () => {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
@@ -189,7 +156,6 @@ const Navbar = () => {
     };
   }, []);
 
-  // Cart Counter
   useEffect(() => {
     const updateCart = async () => {
       const token = localStorage.getItem("token");
@@ -241,7 +207,9 @@ const Navbar = () => {
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [menuOpen]);
 
   useEffect(() => {
@@ -270,15 +238,6 @@ const Navbar = () => {
     setActiveModal("login");
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      closeMobileMenu();
-      setMobileSearchOpen(false);
-      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginLoading(true);
@@ -289,7 +248,7 @@ const Navbar = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
@@ -349,13 +308,13 @@ const Navbar = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({
           name: regName,
           email: regEmail,
           password: regPassword,
-          password_confirmation: regConfirmPassword
+          password_confirmation: regConfirmPassword,
         }),
       });
 
@@ -429,147 +388,157 @@ const Navbar = () => {
               {menuOpen ? <FaTimes /> : <FaBars />}
             </button>
 
-            {/* Reserved Width Logo Container */}
+            {/* Logo */}
             <div className="min-w-[150px] sm:min-w-[200px] flex items-center">
               <Link
                 href="/"
                 className="flex items-center gap-2 hover:opacity-90 transition-opacity flex-shrink-0"
                 onClick={closeMobileMenu}
               >
-                {storeSettings?.is_logo && getStoreLogoUrl(storeSettings.logo) ? (
-                  <img
-                    src={getStoreLogoUrl(storeSettings.logo)}
-                    alt={storeSettings.title || "Store Logo"}
-                    className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
-                  />
-                ) : storeSettings ? (
-                  <Image
-                    src="/logo (9).png"
-                    alt="ShopNest Logo"
-                    width={280}
-                    height={180}
-                    className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
-                    priority
-                  />
+                {mounted && storeSettings ? (
+                  <>
+                    {storeSettings?.is_logo && getStoreLogoUrl(storeSettings.logo) && (
+                      <img
+                        src={getStoreLogoUrl(storeSettings.logo)}
+                        alt={storeSettings?.title || "Store Logo"}
+                        className="h-6 sm:h-9 w-auto max-w-[110px] sm:max-w-[150px] object-contain rounded-md"
+                      />
+                    )}
+                    {storeSettings?.is_title && storeSettings?.title && (
+                      <span className="text-base sm:text-xl font-bold tracking-tight text-white whitespace-nowrap">
+                        {storeSettings.title}
+                      </span>
+                    )}
+                  </>
                 ) : (
-                  <div className="h-6 sm:h-9 w-28 bg-gray-800 rounded animate-pulse" />
-                )}
-
-                {storeSettings?.is_title && storeSettings?.title && (
-                  <span className="text-base sm:text-xl font-bold tracking-tight text-white whitespace-nowrap">
-                    {storeSettings.title}
-                  </span>
+                  <div className="flex items-center gap-2.5 animate-pulse py-1">
+                    <div className="h-6 sm:h-8 w-8 sm:w-10 bg-neutral-800 rounded-md" />
+                    <div className="h-4 sm:h-5 w-24 sm:w-28 bg-neutral-800 rounded" />
+                  </div>
                 )}
               </Link>
             </div>
 
-            {/* Centered Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-xl mx-8">
-              <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products, brands and more..."
-                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-6 pr-24 py-3 focus:outline-none shadow-inner border border-gray-300"
-                />
-                <div className="absolute right-2 flex items-center gap-2">
-                  <button type="button" className="text-gray-400 hover:text-gray-600 p-1">
-                    <FaQrcode className="text-base" />
-                  </button>
-                  <button type="submit" className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 transition">
-                    <FaSearch className="text-sm" />
-                  </button>
-                </div>
-              </form>
+            {/* Desktop Centered Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
+              <SearchBar
+                onOpenImageSearch={() => setImageSearchOpen(true)}
+                onSelectResult={closeMobileMenu}
+              />
             </div>
 
             {/* Right Icons Container */}
-            <div className="hidden md:flex items-center flex-shrink-0">
-              <Link href="/Wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-                <FaHeart className="text-xl hover:text-red-500 transition" />
-                {wishlistCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                    {wishlistCount}
-                  </span>
-                )}
-              </Link>
+            {/* Right Icons Container */}
+<div className="hidden md:flex items-center flex-shrink-0">
+  {/* Wishlist Link */}
+  <Link
+    href="/Wishlist"
+    className="relative p-2 hover:bg-gray-800 rounded-full transition text-white"
+  >
+    <FaHeart className="text-xl hover:text-red-500 transition" />
+    {mounted && wishlistCount > 0 && (
+      <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+        {wishlistCount}
+      </span>
+    )}
+  </Link>
 
-              <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
-                <FaShoppingCart className="text-xl hover:text-blue-500 transition" />
-                {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
+  {/* Cart Link (Changed to Green) */}
+  <Link
+    href="/CartProduct"
+    className="relative p-2 hover:bg-gray-800 rounded-full transition text-white"
+  >
+    <FaShoppingCart className="text-xl hover:text-[#00c65e] transition" />
+    {mounted && cartCount > 0 && (
+      <span className="absolute top-0 right-0 bg-[#00c65e] text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+        {cartCount}
+      </span>
+    )}
+  </Link>
 
-              <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
+  <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
-              {/* User Profile / Sign In */}
-              <div className="relative py-1 hover:text-green-500 min-w-[130px]" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      setActiveModal("login");
-                    } else {
-                      setShowDropdown((prev) => !prev);
-                    }
-                  }}
-                  className="flex items-center gap-2 hover:text-green-500 cursor-pointer rounded-xl border border-transparent transition text-left"
-                >
-                  <div className="text-white flex items-center justify-center text-lg hover:text-green-500">
-                    <FaUser />
-                  </div>
-                  <div className="leading-tight hover:text-green-500">
-                    <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">Welcome</span>
-                    <span className="block text-xs font-bold text-white truncate max-w-[110px] hover:text-green-500">
-                      {isLoggedIn ? user.name : "Sign in / Register"}
-                    </span>
-                  </div>
-                </button>
+  {/* User Profile / Sign In (Synchronized Green Hover on both icon & text) */}
+  <div className="relative py-1 min-w-[130px]" ref={dropdownRef}>
+    <button
+      type="button"
+      onClick={() => {
+        if (!isLoggedIn) {
+          setActiveModal("login");
+        } else {
+          setShowDropdown((prev) => !prev);
+        }
+      }}
+      className="group flex items-center gap-2 cursor-pointer rounded-xl border border-transparent transition text-left"
+    >
+      <div className="text-white flex items-center justify-center text-lg transition-colors group-hover:text-[#00c65e]">
+        <FaUser />
+      </div>
+      <div className="leading-tight">
+        <span className="block text-[10px] font-medium uppercase tracking-wider text-gray-400">
+          Welcome
+        </span>
+        <span className="block text-xs font-bold text-white truncate max-w-[110px] transition-colors group-hover:text-[#00c65e]">
+          {mounted && isLoggedIn ? user.name : "Sign in / Register"}
+        </span>
+      </div>
+    </button>
 
-                {showDropdown && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-                      <h3 className="font-bold text-gray-900 truncate text-sm">
-                        {isLoggedIn ? user.name : "Hello, Guest"}
-                      </h3>
-                      <p className="text-xs text-gray-500 truncate">
-                        {isLoggedIn ? user.email : "Welcome to our store!"}
-                      </p>
-                    </div>
+    {showDropdown && (
+      <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
+        <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+          <h3 className="font-bold text-gray-900 truncate text-sm">
+            {isLoggedIn ? user.name : "Hello, Guest"}
+          </h3>
+          <p className="text-xs text-gray-500 truncate">
+            {isLoggedIn ? user.email : "Welcome to our store!"}
+          </p>
+        </div>
 
-                    <div className="py-1">
-                      <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
-                      </Link>
-                      <Link href="/Orders" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                        <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
-                      </Link>
-                    </div>
+        <div className="py-1">
+          <Link
+            href="/Profile"
+            onClick={() => setShowDropdown(false)}
+            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition"
+          >
+            <FaUser className="text-gray-400 text-sm" /> <span>My Profile</span>
+          </Link>
+          <Link
+            href="/Orders"
+            onClick={() => setShowDropdown(false)}
+            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition"
+          >
+            <FaBox className="text-gray-400 text-sm" /> <span>My Orders</span>
+          </Link>
+        </div>
 
-                    {!isLoggedIn ? (
-                      <div className="border-t border-gray-100 pt-1">
-                        <button
-                          onClick={() => { setShowDropdown(false); setActiveModal("login"); }}
-                          className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition font-medium cursor-pointer"
-                        >
-                          <FaSignOutAlt className="text-blue-500 text-sm rotate-180" /> <span>Sign in / Register</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="border-t border-gray-100 pt-1">
-                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium">
-                          <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+        {!isLoggedIn ? (
+          <div className="border-t border-gray-100 pt-1">
+            <button
+              onClick={() => {
+                setShowDropdown(false);
+                setActiveModal("login");
+              }}
+              className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition font-medium cursor-pointer"
+            >
+              <FaSignOutAlt className="text-emerald-500 text-sm rotate-180" />
+              <span>Sign in / Register</span>
+            </button>
+          </div>
+        ) : (
+          <div className="border-t border-gray-100 pt-1">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer font-medium"
+            >
+              <FaSignOutAlt className="text-red-500 text-sm" /> <span>Logout</span>
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+</div>
 
             {/* Mobile Header Icons */}
             <div className="flex md:hidden items-center gap-1">
@@ -584,7 +553,7 @@ const Navbar = () => {
 
               <Link href="/CartProduct" className="relative p-2 text-white">
                 <FaShoppingCart className="text-lg" />
-                {cartCount > 0 && (
+                {mounted && cartCount > 0 && (
                   <span className="absolute top-0 right-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow">
                     {cartCount}
                   </span>
@@ -595,20 +564,17 @@ const Navbar = () => {
 
           {/* Mobile Expandable Search */}
           {mobileSearchOpen && (
-            <div className="md:hidden w-full bg-gray-200 border-t border-gray-300 shadow-inner px-3 py-2">
-              <form onSubmit={handleSearchSubmit} className="relative w-full flex items-center">
-                <input
-                  type="text"
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products, brands and more..."
-                  className="w-full bg-white text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none border border-gray-300"
-                />
-                <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
-                  <FaSearch className="text-xs" />
-                </button>
-              </form>
+            <div className="md:hidden w-full bg-black/95 border-t border-neutral-800 shadow-inner px-3 py-2.5 relative">
+              <SearchBar
+                onOpenImageSearch={() => {
+                  setMobileSearchOpen(false);
+                  setImageSearchOpen(true);
+                }}
+                onSelectResult={() => {
+                  setMobileSearchOpen(false);
+                  closeMobileMenu();
+                }}
+              />
             </div>
           )}
         </nav>
@@ -697,7 +663,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Center Links with Fixed Layout Anchor */}
+          {/* Center Links */}
           <div className="flex items-center gap-8 text-sm font-semibold text-gray-800 mx-auto min-h-[24px]">
             <Link href="/Products" className="hover:text-green-600 transition whitespace-nowrap ms-6">
               All Products
@@ -717,11 +683,11 @@ const Navbar = () => {
                 </Link>
               ))
             ) : (
-              // Keeps the layout stable while waiting for category fetch
               <div className="flex items-center gap-8 animate-pulse">
-                <div className="w-24 h-4 bg-gray-100 rounded" />
-                <div className="w-28 h-4 bg-gray-100 rounded" />
-                <div className="w-24 h-4 bg-gray-100 rounded" />
+                <div className="h-3.5 w-24 bg-gray-200 rounded-full" />
+                <div className="h-3.5 w-28 bg-gray-200 rounded-full" />
+                <div className="h-3.5 w-24 bg-gray-200 rounded-full" />
+                <div className="h-3.5 w-28 bg-gray-200 rounded-full" />
               </div>
             )}
           </div>
@@ -752,23 +718,18 @@ const Navbar = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="p-4 border-b border-gray-100">
-              <div className="relative w-full flex items-center">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-full pl-4 pr-12 py-2.5 focus:outline-none focus:border-blue-500"
-                />
-                <button type="submit" className="absolute right-1.5 bg-black text-white p-2 rounded-full">
-                  <FaSearch className="text-xs" />
-                </button>
-              </div>
-            </form>
+            <div className="p-4 border-b border-gray-100">
+              <SearchBar
+                onOpenImageSearch={() => {
+                  closeMobileMenu();
+                  setImageSearchOpen(true);
+                }}
+                onSelectResult={closeMobileMenu}
+              />
+            </div>
 
             <div className="p-4 border-b border-gray-100">
-              {isLoggedIn ? (
+              {mounted && isLoggedIn ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
@@ -799,13 +760,13 @@ const Navbar = () => {
             <div className="p-4 border-b border-gray-100 grid grid-cols-2 gap-2">
               <Link href="/Wishlist" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
                 <FaHeart className="text-gray-400" /> Wishlist
-                {wishlistCount > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5">{wishlistCount}</span>}
+                {mounted && wishlistCount > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full px-1.5">{wishlistCount}</span>}
               </Link>
               <Link href="/CartProduct" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
                 <FaShoppingCart className="text-gray-400" /> Cart
-                {cartCount > 0 && <span className="text-[10px] bg-blue-600 text-white rounded-full px-1.5">{cartCount}</span>}
+                {mounted && cartCount > 0 && <span className="text-[10px] bg-blue-600 text-white rounded-full px-1.5">{cartCount}</span>}
               </Link>
-              {isLoggedIn && (
+              {mounted && isLoggedIn && (
                 <>
                   <Link href="/Profile" onClick={closeMobileMenu} className="flex items-center gap-2 text-sm font-medium text-gray-700 py-2">
                     <FaUser className="text-gray-400" /> Profile
@@ -1099,6 +1060,12 @@ const Navbar = () => {
         </div>
       )}
 
+      {/* Image Search Modal */}
+      <ImageSearchModal
+        isOpen={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+      />
+
       {/* Mobile Tab Bar */}
       <div
         className="md:hidden fixed bottom-0 left-0 right-0 inset-x-0 bg-white border-t border-gray-200 shadow-lg z-50 px-4 py-2"
@@ -1116,7 +1083,7 @@ const Navbar = () => {
           <Link href="/CartProduct" className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <div className="relative">
               <FaShoppingCart className="text-base" />
-              {cartCount > 0 && (
+              {mounted && cartCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                   {cartCount}
                 </span>
@@ -1127,7 +1094,7 @@ const Navbar = () => {
           <Link href="/Wishlist" className="relative flex flex-col items-center justify-center text-gray-600 hover:text-black transition">
             <div className="relative">
               <FaHeart className="text-base" />
-              {wishlistCount > 0 && (
+              {mounted && wishlistCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                   {wishlistCount}
                 </span>
