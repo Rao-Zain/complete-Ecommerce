@@ -123,7 +123,7 @@ export default function SearchBar({ onOpenImageSearch, onSelectResult }) {
       {/* Pill Container with Green Glow Effect */}
       <form
         onSubmit={handleSearchSubmit}
-        className="relative flex items-center w-full h-[46px] sm:h-[50px] bg-white rounded-full border-2 border-[#10b981] shadow-[0_0_14px_rgba(16,185,129,0.38)] px-4 transition-all duration-300"
+        className="relative flex items-center w-full h-11 bg-white rounded-full border-2 border-gray-200 shadow-[0_0_14px_rgba(16,185,129,0.38)] px-4 transition-all duration-300"
       >
         {/* Left Search Icon */}
         <FaSearch className="text-gray-400 text-sm shrink-0 mr-2.5" />
@@ -172,7 +172,7 @@ export default function SearchBar({ onOpenImageSearch, onSelectResult }) {
           {/* Circular Green Search Button */}
           <button
             type="submit"
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#00c65e] hover:bg-[#00b053] text-white flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer ml-1"
+            className="w-7 h-7 rounded-full bg-[#00c65e] hover:bg-[#00b053] text-white flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer ml-1"
           >
             <FaSearch className="text-xs sm:text-sm" />
           </button>

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { FaTimes, FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/config";
-
+import { analyzeImage } from "@/lib/clientImageSearch";
 export default function ImageSearchModal({ isOpen, onClose }) {
   const router = useRouter();
   const [dragActive, setDragActive] = useState(false);
@@ -76,46 +76,58 @@ export default function ImageSearchModal({ isOpen, onClose }) {
     searchWithImage(file);
   };
 
-  const searchWithImage = async (file) => {
-    setLoading(true);
-    setError("");
 
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
 
-      const res = await fetch(`${API_BASE_URL}/api/search-by-image`, {
-        method: "POST",
-        body: formData,
-      });
+// Replace your old searchWithImage with this:
+const searchWithImage = async (file) => {
+  setLoading(true);
+  setError("");
 
-      const json = await res.json();
+  try {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
 
-      if (res.ok) {
-        // Save matched product IDs or results in sessionStorage / state
-        const productIds = (json?.data || json?.products || []).map((p) => p.id);
-        
-        onClose();
-        setPreview(null);
-        
-        // Navigate to search results page with image search flag or IDs
-        if (json?.search_token) {
-          router.push(`/Products?image_search_token=${json.search_token}`);
-        } else if (productIds.length > 0) {
-          router.push(`/Products?ids=${productIds.join(",")}`);
-        } else {
-          setError("No matching products found for this image.");
-        }
-      } else {
-        setError(json?.message || "Failed to search using this image.");
-      }
-    } catch (err) {
-      console.error("Image search error:", err);
-      setError("Network error while searching image.");
-    } finally {
-      setLoading(false);
+    await new Promise((resolve) => {
+      img.onload = resolve;
+    });
+
+    const analysis = await analyzeImage(img);
+
+    onClose();
+    setPreview(null);
+
+    const queryParams = new URLSearchParams();
+
+    // If a fashion keyword was resolved
+    if (analysis.keyword) {
+      queryParams.set("search", analysis.keyword);
     }
-  };
+
+    // If a dominant color was detected, append both cases or match your DB standard
+ if (analysis.color) {
+  queryParams.append("color[]", analysis.color.toLowerCase());
+}
+
+const targetUrl = `/ExploreProducts?${queryParams.toString()}`;
+
+onClose();
+setPreview(null);
+
+// If already on ExploreProducts, force Next.js router transition
+if (window.location.pathname.includes("/ExploreProducts")) {
+  router.replace(targetUrl);
+} else {
+  router.push(targetUrl);
+}
+
+router.push(`/ExploreProducts?${queryParams.toString()}`);
+  } catch (err) {
+    console.error("Client vision search failed:", err);
+    setError("Could not analyze image.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">

@@ -22,9 +22,7 @@ const ExploreProductsContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Read search keyword from query string (?search=...)
   const searchQuery = searchParams.get('search') || '';
-
   const pathSegments = params?.slug || [];
 
   const [products, setProducts] = useState([]);
@@ -43,10 +41,13 @@ const ExploreProductsContent = () => {
   const [selectedCategoryPath, setSelectedCategoryPath] = useState(pathSegments.join('/'));
   const [currentCategoryName, setCurrentCategoryName] = useState(null);
 
+  // Derive filters directly from active URL query parameters
   const [priceRange, setPriceRange] = useState(Number(searchParams.get('max_price')) || 100000);
-  const [selectedColors, setSelectedColors] = useState(searchParams.getAll('color[]'));
-  const [selectedSizes, setSelectedSizes] = useState(searchParams.getAll('size[]'));
-  const [selectedBrands, setSelectedBrands] = useState(searchParams.getAll('brand[]'));
+  const [selectedColors, setSelectedColors] = useState(() =>
+    searchParams.getAll('color[]').map((c) => c.toLowerCase())
+  );
+  const [selectedSizes, setSelectedSizes] = useState(() => searchParams.getAll('size[]'));
+  const [selectedBrands, setSelectedBrands] = useState(() => searchParams.getAll('brand[]'));
   const [sortOption, setSortOption] = useState(() => {
     const fromUrl = searchParams.get('sort');
     return SORT_OPTIONS.some((o) => o.value === fromUrl) ? fromUrl : DEFAULT_SORT_VALUE;
@@ -55,6 +56,24 @@ const ExploreProductsContent = () => {
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef(null);
+
+  // Sync state whenever URL query params change (e.g. from in-page ImageSearchModal)
+  useEffect(() => {
+    const urlColors = searchParams.getAll('color[]').map((c) => c.toLowerCase());
+    const urlSizes = searchParams.getAll('size[]');
+    const urlBrands = searchParams.getAll('brand[]');
+    const urlPrice = searchParams.get('max_price');
+    const urlSort = searchParams.get('sort');
+
+    setSelectedColors(urlColors);
+    setSelectedSizes(urlSizes);
+    setSelectedBrands(urlBrands);
+    setPriceRange(urlPrice ? Number(urlPrice) : 100000);
+
+    if (urlSort && SORT_OPTIONS.some((o) => o.value === urlSort)) {
+      setSortOption(urlSort);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -69,7 +88,7 @@ const ExploreProductsContent = () => {
   useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
   useEffect(() => { pageRef.current = page; }, [page]);
 
-  // Fetch products with search query included
+  // Fetch products from backend API
   const fetchProducts = useCallback(async (pageToFetch, isFilterChange) => {
     if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
     fetchedPages.current.add(pageToFetch);
@@ -80,11 +99,10 @@ const ExploreProductsContent = () => {
 
     const categorySegment = selectedCategoryPath ? `/${selectedCategoryPath}` : '';
     const qp = new URLSearchParams();
-    
-    // Pass search keyword to backend API
+
     if (searchQuery.trim()) qp.set('search', searchQuery.trim());
     if (priceRange) qp.set('max_price', priceRange);
-    selectedColors.forEach((c) => qp.append('color[]', c));
+    selectedColors.forEach((c) => qp.append('color[]', c.toLowerCase()));
     selectedSizes.forEach((s) => qp.append('size[]', s));
     selectedBrands.forEach((b) => qp.append('brand[]', b));
     if (sortOption) qp.set('sort', sortOption);
@@ -131,28 +149,33 @@ const ExploreProductsContent = () => {
     }
   }, [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery]);
 
-  // Sync URL while preserving search query parameter
+  // Trigger data fetch on active filters, category, or search term mutation
   useEffect(() => {
-    const categorySegment = selectedCategoryPath ? `/${selectedCategoryPath}` : '';
-    const visibleQp = new URLSearchParams();
-    
-    if (searchQuery.trim()) visibleQp.set('search', searchQuery.trim());
-    if (priceRange) visibleQp.set('max_price', priceRange);
-    selectedColors.forEach((c) => visibleQp.append('color[]', c));
-    selectedSizes.forEach((s) => visibleQp.append('size[]', s));
-    selectedBrands.forEach((b) => visibleQp.append('brand[]', b));
-    if (sortOption) visibleQp.set('sort', sortOption);
-    
-    const visibleQueryString = visibleQp.toString();
-    router.replace(`/ExploreProducts${categorySegment}${visibleQueryString ? `?${visibleQueryString}` : ''}`, { scroll: false });
-
     fetchedPages.current.clear();
     setHasMore(true);
     fetchProducts(1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery]);
+  }, [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery, fetchProducts]);
 
-  // IntersectionObserver for infinite scrolling
+  // Push user interaction changes up to URL
+  const pushUrlFilterUpdate = useCallback((newColors, newPrice, newSizes, newBrands, newSort, newCategoryPath) => {
+    const categorySegment = newCategoryPath !== undefined
+      ? (newCategoryPath ? `/${newCategoryPath}` : '')
+      : (selectedCategoryPath ? `/${selectedCategoryPath}` : '');
+
+    const qp = new URLSearchParams();
+
+    if (searchQuery.trim()) qp.set('search', searchQuery.trim());
+    if (newPrice && newPrice < 100000) qp.set('max_price', newPrice);
+    newColors.forEach((c) => qp.append('color[]', c.toLowerCase()));
+    newSizes.forEach((s) => qp.append('size[]', s));
+    newBrands.forEach((b) => qp.append('brand[]', b));
+    if (newSort && newSort !== DEFAULT_SORT_VALUE) qp.set('sort', newSort);
+
+    const targetUrl = `/ExploreProducts${categorySegment}${qp.toString() ? `?${qp.toString()}` : ''}`;
+    router.replace(targetUrl, { scroll: false });
+  }, [selectedCategoryPath, searchQuery, router]);
+
+  // Infinite scrolling observer
   useEffect(() => {
     if (!hasLoadedOnce.current || !loadMoreRef.current) return;
 
@@ -168,25 +191,65 @@ const ExploreProductsContent = () => {
     return () => observer.disconnect();
   }, [fetchProducts, products.length]);
 
-  const handleClearFilters = () => {
-    setSelectedCategoryPath('');
-    setPriceRange(100000);
-    setSelectedColors([]);
-    setSelectedSizes([]);
-    setSelectedBrands([]);
+const handleClearFilters = () => {
+  // 1. Reset all filter and search states
+  setSelectedCategoryPath('');
+  setPriceRange(100000);
+  setSelectedColors([]);
+  setSelectedSizes([]);
+  setSelectedBrands([]);
+  setSortOption(DEFAULT_SORT_VALUE);
+
+  // 2. Clear out any previous deduplicated pages
+  fetchedPages.current.clear();
+  setHasMore(true);
+
+  // 3. Immediately replace the URL with clean /ExploreProducts (no query parameters)
+  router.replace('/ExploreProducts', { scroll: false });
+};
+
+  const handleCategoryClick = (path) => {
+    setSelectedCategoryPath(path);
+    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, selectedBrands, sortOption, path);
   };
 
-  const toggleInArray = (setter) => (value) => {
-    setter((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  const handlePriceChange = (price) => {
+    setPriceRange(price);
+    pushUrlFilterUpdate(selectedColors, price, selectedSizes, selectedBrands, sortOption);
   };
 
-  const toggleColorSelection = toggleInArray(setSelectedColors);
-  const toggleSizeSelection = toggleInArray(setSelectedSizes);
-  const toggleBrandSelection = toggleInArray(setSelectedBrands);
+  const toggleColorSelection = (color) => {
+    const normalizedColor = color.toLowerCase();
+    const updated = selectedColors.includes(normalizedColor)
+      ? selectedColors.filter((c) => c !== normalizedColor)
+      : [...selectedColors, normalizedColor];
+
+    setSelectedColors(updated);
+    pushUrlFilterUpdate(updated, priceRange, selectedSizes, selectedBrands, sortOption);
+  };
+
+  const toggleSizeSelection = (size) => {
+    const updated = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size];
+
+    setSelectedSizes(updated);
+    pushUrlFilterUpdate(selectedColors, priceRange, updated, selectedBrands, sortOption);
+  };
+
+  const toggleBrandSelection = (brand) => {
+    const updated = selectedBrands.includes(brand)
+      ? selectedBrands.filter((b) => b !== brand)
+      : [...selectedBrands, brand];
+
+    setSelectedBrands(updated);
+    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, updated, sortOption);
+  };
 
   const handleSortSelect = (value) => {
     setSortOption(value);
     setSortOpen(false);
+    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, selectedBrands, value);
   };
 
   if (!hasLoadedOnce.current && loading) {
@@ -210,9 +273,9 @@ const ExploreProductsContent = () => {
         <div className="flex flex-col lg:flex-row gap-6 pb-6 pt-3 lg:mt-0">
           <CategorySidebar
             pathSegments={selectedCategoryPath ? selectedCategoryPath.split('/') : []}
-            onCategoryClick={setSelectedCategoryPath}
+            onCategoryClick={handleCategoryClick}
             priceRange={priceRange}
-            onPriceChange={setPriceRange}
+            onPriceChange={handlePriceChange}
             selectedColors={selectedColors}
             onColorToggle={toggleColorSelection}
             selectedSizes={selectedSizes}
@@ -285,7 +348,7 @@ const ExploreProductsContent = () => {
               <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
                 <p className="text-gray-500 text-sm font-medium">
                   {searchQuery
-                    ? `No products found for "${searchQuery}". Try different keywords.`
+                    ? `No products found for "${searchQuery}". Try different keywords or clearing filters.`
                     : "No products found matching your filters."}
                 </p>
               </div>

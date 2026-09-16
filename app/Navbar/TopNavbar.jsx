@@ -44,7 +44,7 @@ const TopNavbar = ({
 
   return (
     <div className="bg-black sticky top-0 lg:static z-[100] relative">
-      <nav className="container mx-auto flex flex-col justify-between h-13 md:h-20 text-white px-3 sm:px-4">
+      <nav className="container mx-auto flex flex-col justify-between h-18 text-white px-3 sm:px-4">
         <div className="flex justify-between items-center h-full w-full">
           {/* Mobile Hamburger */}
           <button className="md:hidden text-2xl p-2 hover:text-blue-400" onClick={() => setMenuOpen(!menuOpen)}>
