@@ -64,11 +64,19 @@ function mapToCardProduct(product) {
   };
 }
 
-// Utility to ensure only 1 row displays across breakpoints
+// Breakpoint visibility helper
 function getVisibilityClass(index) {
-  if (index < 2) return "flex";           // 2 items visible on all screens
-  if (index === 2) return "hidden md:flex"; // 3rd item appears on md screens
-  return "hidden lg:flex";                // 4th and 5th items appear only on lg+ screens
+  if (index < 4) return "flex"; // First 4 cards visible everywhere
+  if (index === 4) return "flex lg:hidden xl:flex"; // 5th card: visible on <lg, hidden on lg (4 cards), visible on xl+
+  if (index === 5) return "flex lg:hidden 2xl:flex"; // 6th card: visible on <lg, hidden on lg (4 cards) and xl (5 cards), visible on 2xl+
+  return "hidden";
+}
+
+function getSkeletonVisibilityClass(index) {
+  if (index < 4) return "block";
+  if (index === 4) return "block lg:hidden xl:block";
+  if (index === 5) return "block lg:hidden 2xl:block";
+  return "hidden";
 }
 
 const FlashSales = () => {
@@ -123,13 +131,11 @@ const FlashSales = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard
                 key={i}
-                className={
-                  i < 2 ? "block" : i === 2 ? "hidden md:block" : "hidden lg:block"
-                }
+                className={getSkeletonVisibilityClass(i)}
               />
             ))}
           </div>
@@ -149,8 +155,8 @@ const FlashSales = () => {
 
         {/* Products Grid */}
         {!loading && products.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {products.slice(0, 5).map((product, index) => {
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+            {products.slice(0, 6).map((product, index) => {
               const cardProduct = mapToCardProduct(product);
 
               return (
@@ -161,13 +167,10 @@ const FlashSales = () => {
                     index
                   )}`}
                 >
-                  {/* Centralized Image Component */}
                   <ProductCardImage
                     product={product}
                     discountPercent={cardProduct.discountPercent}
                   />
-
-                  {/* Shared Card Content */}
                   <ProductCardContent product={cardProduct} />
                 </Link>
               );

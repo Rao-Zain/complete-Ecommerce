@@ -189,7 +189,7 @@ function Products() {
 
         {/* Initial skeleton */}
         {initialLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
             {Array.from({ length: PER_PAGE }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -210,7 +210,7 @@ function Products() {
 
         {/* Products Grid */}
         {!initialLoading && products.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
             {products.map((product) => {
               const cardProduct = mapToCardProduct(product);
 

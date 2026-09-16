@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
+import RelatedProducts from "../../RelatedProducts/RelatedProducts";
 import {
   MdFlashOn,
   MdChevronLeft,
@@ -47,13 +48,15 @@ export default function Productdetail() {
   const COLLAPSED_DESCRIPTION_HEIGHT = 110;
 
   const mainSwiperRef = useRef(null);
-  const thumbnailSwiperRef = useRef(null);
   const prevButtonRef = useRef(null);
   const nextButtonRef = useRef(null);
 
-  // Zoom logic
+  // Zoom logic & dynamic wheel zoom level
   const zoomContainerRef = useRef(null);
   const [isZooming, setIsZooming] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(3.5);
+  const cursorCoordsRef = useRef({ clientX: 0, clientY: 0 });
+
   const [lensBox, setLensBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   const [zoomPane, setZoomPane] = useState({
     width: 0,
@@ -61,7 +64,6 @@ export default function Productdetail() {
     backgroundSize: "0px 0px",
     backgroundPosition: "0px 0px",
   });
-  const zoomLevel = 3.5;
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
@@ -162,13 +164,13 @@ export default function Productdetail() {
   const avgRating = Number(product?.avg_rating ?? 0);
   const totalReviews = Number(product?.total_reviews ?? 0);
 
-  // Zoom handlers
-  const updateZoom = (clientX, clientY) => {
+  // Zoom calculation handler
+  const updateZoom = useCallback((clientX, clientY, currentZoom = zoomLevel) => {
     const container = zoomContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const lensWidth = rect.width / zoomLevel;
-    const lensHeight = rect.height / zoomLevel;
+    const lensWidth = rect.width / currentZoom;
+    const lensHeight = rect.height / currentZoom;
     const cursorX = clientX - rect.left;
     const cursorY = clientY - rect.top;
 
@@ -179,10 +181,31 @@ export default function Productdetail() {
     setZoomPane({
       width: rect.width,
       height: rect.height,
-      backgroundSize: `${rect.width * zoomLevel}px ${rect.height * zoomLevel}px`,
-      backgroundPosition: `-${lensLeft * zoomLevel}px -${lensTop * zoomLevel}px`,
+      backgroundSize: `${rect.width * currentZoom}px ${rect.height * currentZoom}px`,
+      backgroundPosition: `-${lensLeft * currentZoom}px -${lensTop * currentZoom}px`,
     });
-  };
+  }, [zoomLevel]);
+
+  // Wheel zoom handler: intercept wheel scroll and adjust zoom ratio
+  useEffect(() => {
+    const container = zoomContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      if (!isZooming) return;
+      e.preventDefault(); // Stop page scrolling during zoom
+
+      setZoomLevel((prev) => {
+        const delta = e.deltaY < 0 ? 0.35 : -0.35;
+        const newZoom = Math.min(Math.max(Number((prev + delta).toFixed(2)), 1.8), 6.0);
+        updateZoom(cursorCoordsRef.current.clientX, cursorCoordsRef.current.clientY, newZoom);
+        return newZoom;
+      });
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [isZooming, updateZoom]);
 
   const changeImage = (index) => {
     setActiveImage(index);
@@ -281,21 +304,93 @@ export default function Productdetail() {
     }
   };
 
+  // Full detailed shimmer skeleton
   if (loading) {
     return (
-      <div className="w-full container mx-auto px-4 py-8 animate-pulse">
-        <div className="h-4 w-48 bg-gray-200 rounded mb-6" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 h-[420px] bg-gray-200 rounded-2xl" />
-          <div className="lg:col-span-5 space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-3/4" />
-            <div className="h-4 bg-gray-200 rounded w-1/3" />
-            <div className="h-8 bg-gray-200 rounded w-1/2" />
-            <div className="h-24 bg-gray-200 rounded" />
+      <main className="w-full bg-gray-100 min-h-screen">
+        <div className="container mx-auto px-3 sm:px-4 py-4 pb-16 sm:py-6">
+          {/* Breadcrumbs Shimmer */}
+          <div className="flex items-center gap-2 mb-5">
+            <div className="h-3.5 w-12 bg-gray-200 animate-pulse rounded" />
+            <span className="text-gray-300">/</span>
+            <div className="h-3.5 w-16 bg-gray-200 animate-pulse rounded" />
+            <span className="text-gray-300">/</span>
+            <div className="h-3.5 w-32 bg-gray-200 animate-pulse rounded" />
           </div>
-          <div className="lg:col-span-3 h-[420px] bg-gray-200 rounded-2xl" />
+
+          {/* 3 Columns Shimmer */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            {/* Col 1: Images */}
+            <div className="lg:col-span-4 flex flex-col gap-3 min-w-0">
+              <div className="w-full h-[380px] sm:h-[450px] lg:h-[500px] bg-gray-200 animate-pulse rounded-2xl border border-gray-300/60" />
+              <div className="flex gap-2.5 overflow-hidden">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="w-16 h-16 sm:w-18 sm:h-18 bg-gray-200 animate-pulse rounded-xl shrink-0" />
+                ))}
+              </div>
+            </div>
+
+            {/* Col 2: Info & Details */}
+            <div className="lg:col-span-5 flex flex-col space-y-4 min-w-0">
+              <div className="h-7 sm:h-8 bg-gray-200 animate-pulse rounded-lg w-11/12" />
+              <div className="h-3.5 bg-gray-200 animate-pulse rounded w-1/3" />
+              <div className="h-4 bg-gray-200 animate-pulse rounded w-1/4" />
+              <div className="flex items-center gap-3 pt-2">
+                <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md" />
+                <div className="h-6 w-20 bg-gray-200 animate-pulse rounded-md" />
+              </div>
+              <div className="h-6 w-32 bg-gray-200 animate-pulse rounded-full" />
+              
+              {/* Color swatches */}
+              <div className="space-y-2 pt-2">
+                <div className="h-3.5 w-20 bg-gray-200 animate-pulse rounded" />
+                <div className="flex gap-2">
+                  <div className="h-8 w-20 bg-gray-200 animate-pulse rounded-lg" />
+                  <div className="h-8 w-20 bg-gray-200 animate-pulse rounded-lg" />
+                </div>
+              </div>
+
+              {/* Size swatches */}
+              <div className="space-y-2">
+                <div className="h-3.5 w-16 bg-gray-200 animate-pulse rounded" />
+                <div className="flex gap-2">
+                  <div className="h-9 w-12 bg-gray-200 animate-pulse rounded-lg" />
+                  <div className="h-9 w-12 bg-gray-200 animate-pulse rounded-lg" />
+                  <div className="h-9 w-12 bg-gray-200 animate-pulse rounded-lg" />
+                </div>
+              </div>
+
+              {/* Quantity */}
+              <div className="space-y-2">
+                <div className="h-3.5 w-16 bg-gray-200 animate-pulse rounded" />
+                <div className="h-9 w-28 bg-gray-200 animate-pulse rounded-lg" />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-3">
+                <div className="h-11 flex-1 bg-gray-200 animate-pulse rounded-lg" />
+                <div className="h-11 flex-1 bg-gray-200 animate-pulse rounded-lg" />
+              </div>
+            </div>
+
+            {/* Col 3: Delivery Sidebar */}
+            <div className="lg:col-span-3 w-full h-[460px] bg-gray-200 animate-pulse rounded-2xl" />
+          </div>
+
+          {/* Description Section Shimmer */}
+          <div className="mt-12 pt-8 border-t border-gray-200 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gray-200 animate-pulse" />
+              <div className="h-5 w-40 bg-gray-200 animate-pulse rounded" />
+            </div>
+            <div className="space-y-2.5 max-w-4xl">
+              <div className="h-3.5 bg-gray-200 animate-pulse rounded w-full" />
+              <div className="h-3.5 bg-gray-200 animate-pulse rounded w-5/6" />
+              <div className="h-3.5 bg-gray-200 animate-pulse rounded w-4/6" />
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -322,7 +417,7 @@ export default function Productdetail() {
         {/* Product Section 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* COLUMN 1: Images (4 cols on lg) */}
+          {/* COLUMN 1: Images */}
           <div className="lg:col-span-4 flex flex-col gap-3 min-w-0">
             <div className="relative">
               <div
@@ -330,14 +425,18 @@ export default function Productdetail() {
                 onMouseEnter={(e) => {
                   if (typeof window !== "undefined" && window.innerWidth >= 1024) {
                     setIsZooming(true);
+                    cursorCoordsRef.current = { clientX: e.clientX, clientY: e.clientY };
                     updateZoom(e.clientX, e.clientY);
                   }
                 }}
-                onMouseMove={(e) => isZooming && updateZoom(e.clientX, e.clientY)}
+                onMouseMove={(e) => {
+                  cursorCoordsRef.current = { clientX: e.clientX, clientY: e.clientY };
+                  if (isZooming) updateZoom(e.clientX, e.clientY);
+                }}
                 onMouseLeave={() => setIsZooming(false)}
-                className="relative w-full h-[350px] sm:h-[380px] lg:h-[430px] bg-gray-100 rounded-2xl overflow-hidden border border-gray-200 group cursor-zoom-in"
+                className="relative w-full h-[380px] sm:h-[450px] lg:h-[500px] bg-white rounded-2xl overflow-hidden border border-gray-200 group cursor-zoom-in"
               >
-                {/* Wishlist Button pinned to top-right */}
+                {/* Wishlist Button */}
                 <div className="absolute top-3 right-3 z-30">
                   <WishlistButton productId={product.id} />
                 </div>
@@ -401,7 +500,7 @@ export default function Productdetail() {
 
                     {isZooming && (
                       <div
-                        className="hidden lg:block absolute z-20 border border-emerald-500 bg-emerald-500/20 pointer-events-none"
+                        className="hidden lg:block absolute z-20 border border-emerald-500 bg-emerald-500/20 pointer-events-none transition-[width,height] duration-75 ease-out"
                         style={{
                           left: `${lensBox.left}px`,
                           top: `${lensBox.top}px`,
@@ -418,7 +517,7 @@ export default function Productdetail() {
                 )}
               </div>
 
-              {/* Magnifier zoom floating preview pane */}
+              {/* Magnifier preview pane */}
               {isZooming && productImages[activeImage] && (
                 <div
                   className="hidden lg:block absolute top-0 left-full ml-4 z-40 rounded-2xl border border-gray-200 shadow-2xl bg-white overflow-hidden"
@@ -461,7 +560,7 @@ export default function Productdetail() {
             )}
           </div>
 
-          {/* COLUMN 2: Product Info & Choices (5 cols on lg) */}
+          {/* COLUMN 2: Product Info & Choices */}
           <div className="lg:col-span-5 flex flex-col min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
               {product.name}
@@ -630,7 +729,7 @@ export default function Productdetail() {
             </div>
           </div>
 
-          {/* COLUMN 3: Delivery & Protection Sidebar (3 cols on lg) */}
+          {/* COLUMN 3: Delivery & Protection Sidebar */}
           <div className="lg:col-span-3 w-full">
             <ProductDeliverySidebar brandName={product.brand || "Loremipsum"} />
           </div>
@@ -681,6 +780,11 @@ export default function Productdetail() {
         {/* Reviews Section */}
         <section className="mt-10">
           <ProductReviews product={product} />
+        </section>
+
+        {/* Related Products Section */}
+        <section className="mt-10">
+          <RelatedProducts slug={product.slug} />
         </section>
       </div>
     </main>

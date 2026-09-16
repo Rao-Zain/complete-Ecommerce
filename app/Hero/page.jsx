@@ -11,69 +11,90 @@ import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const Hero = () => {
   const [sliders, setSliders] = useState([]);
+  const [isEnabled, setIsEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  
 
   useEffect(() => {
-    const fetchSliders = async () => {
+    const initializeHero = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/sliders`);
-        if (!res.ok) throw new Error("Failed to fetch sliders");
-        const response = await res.json();
-        setSliders(response.data || []);
+        // 1. Fetch store settings to verify if sliders are enabled
+        const settingsRes = await fetch("https://stores.hexalogicx.com/api/store-settings");
+        if (!settingsRes.ok) throw new Error("Failed to fetch store settings");
+
+        const settingsData = await settingsRes.json();
+        
+        // Resolve nested payloads (e.g. data.is_sliders or direct is_sliders)
+        const isSlidersEnabled = Boolean(
+          settingsData?.data?.is_sliders ?? settingsData?.is_sliders
+        );
+
+        // If disabled, stop here and do not fetch sliders
+        if (!isSlidersEnabled) {
+          setIsEnabled(false);
+          setLoading(false);
+          return;
+        }
+
+        setIsEnabled(true);
+
+        // 2. Fetch sliders only when enabled
+        const slidersRes = await fetch(`${API_BASE_URL}/api/sliders`);
+        if (!slidersRes.ok) throw new Error("Failed to fetch sliders");
+
+        const slidersData = await slidersRes.json();
+        setSliders(slidersData.data || []);
       } catch (err) {
-        console.error("Error fetching sliders:", err);
+        console.error("Error initializing hero slider:", err);
         setError(true);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSliders();
+    initializeHero();
   }, []);
 
+  // Return nothing if disabled or if an error/empty state occurs while hidden
+  if (!loading && !isEnabled) {
+    return null;
+  }
+
   if (loading) {
-  return (
-    <div className="relative w-full h-[180px] xs:h-[220px] sm:h-[320px] md:h-[380px] lg:h-[435px] overflow-hidden bg-gray-200">
-      {/* Shimmer layer */}
-      <div className="absolute inset-0 shimmer" />
-
-      {/* Fake content to resemble the actual hero */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-full max-w-2xl px-6 text-center">
-          {/* Heading skeleton */}
-          <div className="mx-auto h-8 lg:h-12 w-2/3 rounded-md bg-gray-300" />
-
-          {/* Description skeleton */}
-          <div className="mx-auto mt-4 h-4 lg:h-6 w-1/2 rounded-md bg-gray-300" />
+    return (
+      <div className="relative w-full h-[180px] xs:h-[220px] sm:h-[320px] md:h-[380px] lg:h-[435px] overflow-hidden bg-gray-200">
+        <div className="absolute inset-0 shimmer" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full max-w-2xl px-6 text-center">
+            <div className="mx-auto h-8 lg:h-12 w-2/3 rounded-md bg-gray-300" />
+            <div className="mx-auto mt-4 h-4 lg:h-6 w-1/2 rounded-md bg-gray-300" />
+          </div>
         </div>
+
+        <style jsx>{`
+          .shimmer {
+            background: linear-gradient(
+              90deg,
+              rgba(229, 231, 235, 0) 0%,
+              rgba(255, 255, 255, 0.6) 50%,
+              rgba(229, 231, 235, 0) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.8s infinite;
+          }
+
+          @keyframes shimmer {
+            0% {
+              background-position: -200% 0;
+            }
+            100% {
+              background-position: 200% 0;
+            }
+          }
+        `}</style>
       </div>
-
-      <style jsx>{`
-        .shimmer {
-          background: linear-gradient(
-            90deg,
-            rgba(229, 231, 235, 0) 0%,
-            rgba(255, 255, 255, 0.6) 50%,
-            rgba(229, 231, 235, 0) 100%
-          );
-          background-size: 200% 100%;
-          animation: shimmer 1.8s infinite;
-        }
-
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
+    );
+  }
 
   if (error || sliders.length === 0) {
     return (
@@ -84,7 +105,7 @@ const Hero = () => {
   }
 
   return (
-    <div >
+    <div>
       <Swiper
         modules={[Autoplay, Pagination]}
         autoplay={{

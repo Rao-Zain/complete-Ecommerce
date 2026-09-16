@@ -89,7 +89,7 @@ function Bestselling() {
 
         {/* Loading — shimmer skeleton grid */}
         {loading && (
-          <div className="container mx-auto grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
+          <div className="container mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -123,7 +123,7 @@ function Bestselling() {
 
         {/* Products Grid */}
         {!loading && !error && products.length > 0 && (
-          <div className="container mx-auto grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
+          <div className="container mx-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
             {products.map((product) => {
               const cardProduct = mapToCardProduct(product);
 
