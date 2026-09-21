@@ -459,7 +459,7 @@ export default function Productdetail() {
                 className="relative w-full h-[380px] sm:h-[450px] lg:h-[500px] bg-white rounded-2xl overflow-hidden border border-gray-200 group cursor-zoom-in"
               >
                 {/* Wishlist Button */}
-                <div className="absolute top-3 right-3 z-30">
+                <div className="absolute top-3 right-3 ">
                   <WishlistButton productId={product.id} />
                 </div>
 

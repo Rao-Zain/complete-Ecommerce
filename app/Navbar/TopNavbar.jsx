@@ -9,8 +9,8 @@ import { API_BASE_URL } from "@/lib/config";
 const TopNavbar = ({
   mounted,
   storeSettings,
-  wishlistCount,
-  cartCount,
+  wishlistCount = 0,
+  cartCount = 0,
   user,
   isLoggedIn,
   menuOpen,
@@ -21,7 +21,41 @@ const TopNavbar = ({
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [displayCartCount, setDisplayCartCount] = useState(Number(cartCount) || 0);
   const dropdownRef = useRef(null);
+
+  // Sync prop changes to internal display state
+  useEffect(() => {
+    setDisplayCartCount(Number(cartCount) || 0);
+  }, [cartCount]);
+
+  // Sync automatically if cart changes via localStorage/custom events across pages
+  useEffect(() => {
+    const handleCartSync = () => {
+      try {
+        const saved = localStorage.getItem("cart");
+        if (saved) {
+          const items = JSON.parse(saved);
+          const total = Array.isArray(items)
+            ? items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0)
+            : 0;
+          setDisplayCartCount(total);
+        } else {
+          setDisplayCartCount(0);
+        }
+      } catch (err) {
+        console.error("Failed to sync cart count:", err);
+      }
+    };
+
+    window.addEventListener("cartUpdated", handleCartSync);
+    window.addEventListener("storage", handleCartSync);
+
+    return () => {
+      window.removeEventListener("cartUpdated", handleCartSync);
+      window.removeEventListener("storage", handleCartSync);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -42,10 +76,13 @@ const TopNavbar = ({
   const isLogoEnabled = Boolean(storeSettings?.is_logo === true || storeSettings?.is_logo === 1 || storeSettings?.is_logo === "1");
   const isTitleEnabled = Boolean(storeSettings?.is_title === true || storeSettings?.is_title === 1 || storeSettings?.is_title === "1");
 
+  const safeWishlistCount = Number(wishlistCount) || 0;
+  const safeCartCount = Number(displayCartCount) || 0;
+
   return (
     <div className="bg-black sticky top-0 lg:static z-[100] relative w-full">
       <div className="container mx-auto px-3 sm:px-4">
-        {/* Top Fixed Row (Strictly h-14 on mobile, h-18 on desktop) */}
+        {/* Top Fixed Row */}
         <div className="relative flex justify-between items-center h-15 w-full text-white">
           {/* Mobile Hamburger */}
           <button
@@ -92,18 +129,18 @@ const TopNavbar = ({
           <div className="hidden md:flex items-center justify-end md:flex-1 md:basis-0 flex-shrink-0">
             <Link href="/Wishlist" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
               <FaHeart className="text-xl hover:text-red-500 transition" />
-              {mounted && wishlistCount > 0 && (
+              {mounted && safeWishlistCount > 0 && (
                 <span className="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {wishlistCount}
+                  {safeWishlistCount}
                 </span>
               )}
             </Link>
 
             <Link href="/CartProduct" className="relative p-2 hover:bg-gray-800 rounded-full transition text-white">
               <FaShoppingCart className="text-xl hover:text-[#00c65e] transition" />
-              {mounted && cartCount > 0 && (
+              {mounted && safeCartCount > 0 && (
                 <span className="absolute top-0 right-0 bg-[#00c65e] text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {cartCount}
+                  {safeCartCount}
                 </span>
               )}
             </Link>
@@ -111,7 +148,7 @@ const TopNavbar = ({
             <div className="hidden sm:block h-8 border-l border-gray-700 mx-3" />
 
             {/* Profile Dropdown */}
-            <div className="relative py-1 " ref={dropdownRef}>
+            <div className="relative py-1" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => (!isLoggedIn ? onOpenAuthModal("login") : setShowDropdown((prev) => !prev))}
@@ -121,7 +158,7 @@ const TopNavbar = ({
                 <div className="leading-tight">
                   <span className="block text-[10px] uppercase text-gray-400">Welcome</span>
                   <span className="block text-xs font-bold text-white truncate max-w-[110px] group-hover:text-[#00c65e]">
-                    {mounted && isLoggedIn ? user.name : "Sign in / Register"}
+                    {mounted && isLoggedIn ? user?.name : "Sign in / Register"}
                   </span>
                 </div>
               </button>
@@ -129,8 +166,8 @@ const TopNavbar = ({
               {showDropdown && (
                 <div className="absolute right-0 top-full mt-1 w-52 bg-white text-gray-800 rounded-2xl shadow-2xl border border-gray-100 overflow-hidden py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="font-bold text-gray-900 truncate text-sm">{isLoggedIn ? user.name : "Hello, Guest"}</h3>
-                    <p className="text-xs text-gray-500 truncate">{isLoggedIn ? user.email : "Welcome to our store!"}</p>
+                    <h3 className="font-bold text-gray-900 truncate text-sm">{isLoggedIn ? user?.name : "Hello, Guest"}</h3>
+                    <p className="text-xs text-gray-500 truncate">{isLoggedIn ? user?.email : "Welcome to our store!"}</p>
                   </div>
                   <div className="py-1">
                     <Link href="/Profile" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600">
@@ -159,7 +196,6 @@ const TopNavbar = ({
             >
               {mobileSearchOpen ? <FaTimes className="text-base" /> : <FaSearch className="text-base" />}
             </button>
-           
           </div>
         </div>
 
