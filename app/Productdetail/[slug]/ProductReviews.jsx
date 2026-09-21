@@ -63,9 +63,9 @@ export default function ProductReviews({ product }) {
       <h2 className="text-lg font-bold text-gray-800 mb-5">Customer Reviews</h2>
 
       {/* Rating Summary */}
-      <div className="w-full bg-gray-50 rounded-lg border border-gray-200 px-4 py-5">
+      <div className="w-full bg-gray-100 rounded-lg py-5">
         <div className="flex items-center">
-          <div className="w-[155px] shrink-0 flex flex-col items-center justify-center border-r border-gray-200 pr-6">
+          <div className="w-[115px] shrink-0 flex flex-col items-center justify-center border-r border-gray-200  pr-6">
             <span className="text-4xl font-extrabold leading-none text-gray-900">
               {avgRating.toFixed(1)}
             </span>
@@ -100,7 +100,7 @@ export default function ProductReviews({ product }) {
         <h3 className="text-base font-semibold text-gray-800 mb-3">Recent Reviews</h3>
 
         {reviews.length === 0 && (
-          <p className="text-xs text-gray-500">No reviews yet.</p>
+          <p className="text-xs text-gray-100">No reviews yet.</p>
         )}
 
         <div className="flex flex-col gap-3">
@@ -110,7 +110,7 @@ export default function ProductReviews({ product }) {
             return (
               <div
                 key={review.id}
-                className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm"
+                className="bg-gray-100 rounded-lg  py-3 "
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export default function ProductReviews({ product }) {
                   </div>
 
                   {review.is_approved === 1 && (
-                    <span className="text-[8px] bg-green-50 text-green-600 border border-green-200 px-2 py-[2px] rounded-full font-medium">
+                    <span className="text-[8px] bg-green-50 text-green-600  px-2 py-[2px] rounded-full font-medium">
                       ● Verified
                     </span>
                   )}

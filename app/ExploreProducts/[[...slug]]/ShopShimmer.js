@@ -112,7 +112,7 @@ const ProductCardShimmer = () => (
 
 const ShopShimmer = () => (
     <div className="bg-gray-50 min-h-screen py-8">
-        <div className="container mx-auto px-3 sm:px-7 py-2 sm:pb-2">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:pb-2">
             {/* Top Page Header */}
             <div className="text-center animate-pulse">
                 <div className="w-64 h-8 bg-gray-200 mx-auto rounded-lg mb-2" />

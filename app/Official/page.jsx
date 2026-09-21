@@ -1,5 +1,8 @@
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
+// Helper to reliably evaluate numeric, string, or boolean truthy flags (1, "1", true)
+const isFlagActive = (flag) => Number(flag) === 1 || flag === true;
+
 // 1. Fetch Store Settings to check visibility flag
 async function getStoreSettings() {
   try {
@@ -40,20 +43,23 @@ async function Official() {
     getBrandBanner(),
   ]);
 
-  const isBrandBannerVisible =
-    settings?.show_brand_banner === true ||
-    settings?.show_brand_banner === 1 ||
-    settings?.show_brand_banner === "1";
+  const isBrandBannerVisible = isFlagActive(settings?.show_brand_banner);
 
   // Completely remove from DOM if flag is inactive or banner data is unavailable
   if (!isBrandBannerVisible || !data) {
     return null;
   }
 
-  const heading = data.name;
+  // Check conditional flags
+  const showImage = isFlagActive(data.is_image) && Boolean(data.image);
+  const showTitle = isFlagActive(data.is_title) && Boolean(data.name || data.heading);
+  const showDescription = isFlagActive(data.is_description) && Boolean(data.description);
+  const showButton = isFlagActive(data.is_button) && Boolean(data.button_name);
+
+  const heading = data.name || data.heading;
   const description = data.description;
-  const buttonText = data.button_name || "Explore All Brands";
-  const link = data.link || "#";
+  const buttonText = data.button_name;
+  const link = data.link || "/Products";
 
   const bgImage = data.image
     ? data.image.startsWith("http")
@@ -64,15 +70,15 @@ async function Official() {
   return (
     <section className="relative w-full bg-[#111827] overflow-hidden py-10 sm:py-14 px-6">
       {/* Background Image with Gradient Overlay */}
-      {bgImage && (
+      {showImage && bgImage && (
         <div
           className="absolute inset-0 bg-cover bg-center bg-fixed opacity-70 z-0"
           style={{ backgroundImage: `url('${bgImage}')` }}
-        ></div>
+        />
       )}
 
-      {/* Dark Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0b0f17] via-[#0b0f17]/90 to-transparent z-10"></div>
+      {/* Dark Gradient Overlay - visible if text is displayed or background is active */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0b0f17] via-[#0b0f17]/90 to-transparent z-10 pointer-events-none" />
 
       {/* Content Container */}
       <div className="relative z-10 px-3 sm:px-4 container mx-auto flex flex-col items-start text-left">
@@ -83,30 +89,32 @@ async function Official() {
         </div>
 
         {/* Main Heading */}
-        {heading && (
+        {showTitle && heading && (
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-xl">
             {heading}
           </h1>
         )}
 
         {/* Description Paragraph */}
-        {description && (
+        {showDescription && description && (
           <p className="text-gray-300 text-xs sm:text-sm mt-2 max-w-lg leading-relaxed">
             {description}
           </p>
         )}
 
         {/* Call to Action Button */}
-        <div className="mt-5">
-          <a href={link}>
-            <button className="bg-white hover:bg-gray-100 text-zinc-900 font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition duration-300 transform hover:scale-105">
-              {buttonText}
-              <svg className="w-4 h-4 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </a>
-        </div>
+        {showButton && (
+          <div className="mt-5">
+            <a href={link}>
+              <button className="bg-white hover:bg-gray-100 text-zinc-900 cursor-pointer font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition duration-300 transform hover:scale-105">
+                {buttonText}
+                <svg className="w-4 h-4 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );

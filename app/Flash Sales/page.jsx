@@ -25,13 +25,38 @@ function SkeletonCard({ className = "" }) {
 
 function mapToCardProduct(product) {
   const firstVariant = product.variants?.[0];
-  const price = firstVariant ? Number(firstVariant.price) : Number(product.price || 0);
-  const cutPrice = firstVariant?.cut_price ? Number(firstVariant.cut_price) : (product.cut_price ? Number(product.cut_price) : null);
 
-  const discountPercent =
-    cutPrice !== null && cutPrice > price
-      ? Math.round(((cutPrice - price) / cutPrice) * 100)
-      : (product.discount_percent ? Number(product.discount_percent) : null);
+  // Raw fields coming from the API
+  const rawPrice = firstVariant ? Number(firstVariant.price) : Number(product.price || 0);
+  const rawCutPrice = firstVariant?.cut_price
+    ? Number(firstVariant.cut_price)
+    : product.cut_price
+    ? Number(product.cut_price)
+    : null;
+
+  // discount_percentage comes from the flash_sale object (only present for flash sale products)
+  const discountPercentage = Number(product.flash_sale?.discount_percentage || 0);
+
+  let price = rawPrice;
+  let originalPrice;
+  let discountPercent;
+
+  if (discountPercentage > 0 && rawCutPrice) {
+    // CASE 1: discount_percentage is present -> calculate actual price from cut_price
+    originalPrice = rawCutPrice;
+    price = Math.round((rawCutPrice - (rawCutPrice * discountPercentage) / 100) * 100) / 100;
+    discountPercent = Math.round(discountPercentage);
+  } else if (rawCutPrice && rawCutPrice > rawPrice) {
+    // CASE 2: no discount_percentage -> just show price & cut_price as they are
+    originalPrice = rawCutPrice;
+    price = rawPrice;
+    discountPercent = Math.round(((rawCutPrice - rawPrice) / rawCutPrice) * 100);
+  } else {
+    // No discount at all
+    price = rawPrice;
+    originalPrice = undefined;
+    discountPercent = undefined;
+  }
 
   const totalStock =
     product.variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) ?? (product.stock || 0);
@@ -57,7 +82,7 @@ function mapToCardProduct(product) {
     ratingCount: Number(ratingCount) || 0,
     sold: Number(product.order_items_count ?? product.sold_count ?? product.sold ?? 0),
     price,
-    originalPrice: cutPrice && cutPrice > price ? cutPrice : undefined,
+    originalPrice: originalPrice && originalPrice > price ? originalPrice : undefined,
     discountPercent: discountPercent || undefined,
     inStock,
     freeDelivery: product.free_delivery ?? inStock,

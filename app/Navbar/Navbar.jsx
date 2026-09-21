@@ -159,6 +159,7 @@ const Navbar = () => {
         cartCount={cartCount}
         categoriesData={categoriesData}
         loading={loading}
+        storeSettings={storeSettings}
         onOpenAuthModal={(mode) => setActiveModal(mode)}
         onLogout={handleLogout}
         onOpenImageSearch={() => setImageSearchOpen(true)}

@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Package, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Calendar, Package, CheckCircle2, RotateCcw } from "lucide-react";
 import Swal from "sweetalert2";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 const defaultPic = "/default.jpg";
+const RESTORE_TIME_LIMIT_SECONDS = 60; // 1 minute window for testing
 
 function OrderDetailSkeleton() {
   return (
@@ -63,6 +65,10 @@ function OrderDetail() {
   const [cancelling, setCancelling] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+
+  // Timer states
+  const [timeLeft, setTimeLeft] = useState(null);
+  const timerRef = useRef(null);
 
   const getAuthToken = () => {
     if (typeof window === "undefined") return null;
@@ -148,6 +154,36 @@ function OrderDetail() {
     }
   };
 
+  // Timer countdown controller
+  const startRestoreCountdown = (cancelledTimestamp) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    const calculateRemaining = () => {
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - cancelledTimestamp) / 1000);
+      const remaining = RESTORE_TIME_LIMIT_SECONDS - elapsedSeconds;
+
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(`order_cancel_time_${id}`);
+        }
+        clearInterval(timerRef.current);
+      } else {
+        setTimeLeft(remaining);
+      }
+    };
+
+    calculateRemaining();
+    timerRef.current = setInterval(calculateRemaining, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!id) return;
 
@@ -180,6 +216,22 @@ function OrderDetail() {
           throw new Error("Order data not found in response");
         }
 
+        const isCancelled = matchedOrder.status?.toLowerCase() === "cancelled";
+
+        if (isCancelled) {
+          const storedTime = localStorage.getItem(`order_cancel_time_${id}`);
+          const cancelledAt = storedTime
+            ? parseInt(storedTime, 10)
+            : new Date(matchedOrder.updated_at || matchedOrder.created_at).getTime();
+
+          const elapsed = (Date.now() - cancelledAt) / 1000;
+          if (elapsed < RESTORE_TIME_LIMIT_SECONDS) {
+            startRestoreCountdown(cancelledAt);
+          } else {
+            setTimeLeft(0);
+          }
+        }
+
         const formattedOrder = {
           orderId: formatOrderNumber(matchedOrder.order_number || matchedOrder.id || id),
           placedDate: matchedOrder.created_at
@@ -197,6 +249,7 @@ function OrderDetail() {
             : "Pending",
           items: (matchedOrder.items || []).map((item) => ({
             id: item.id,
+            slug: item.product?.slug || item.slug || item.product_id || item.id,
             name: item.product?.name || item.product_name || item.name || "Product Item",
             color: getItemColor(item),
             size: getItemSize(item),
@@ -272,6 +325,11 @@ function OrderDetail() {
         throw new Error(result?.message || `Server returned status ${response.status}`);
       }
 
+      // Record cancel timestamp and start countdown
+      const cancelTime = Date.now();
+      localStorage.setItem(`order_cancel_time_${id}`, cancelTime.toString());
+      startRestoreCountdown(cancelTime);
+
       setOrderData((prev) => ({
         ...prev,
         status: "Cancelled",
@@ -279,7 +337,7 @@ function OrderDetail() {
 
       Swal.fire({
         title: "Cancelled!",
-        text: "Order cancelled successfully.",
+        text: `Order cancelled. You can restore it within ${RESTORE_TIME_LIMIT_SECONDS} seconds.`,
         icon: "success",
         confirmButtonColor: "#00a651",
       });
@@ -334,7 +392,7 @@ function OrderDetail() {
       setRestoring(true);
       setCancelError(null);
 
-      const url = `${API_BASE_URL}/api/restore-order/${id}`;
+      const url = `${API_BASE_URL}/api/orders/restore/${id}`;
 
       const response = await fetch(url, {
         method: "POST",
@@ -353,6 +411,10 @@ function OrderDetail() {
       if (!response.ok || result?.success === false || result?.status === false) {
         throw new Error(result?.message || `Server returned status ${response.status}`);
       }
+
+      if (timerRef.current) clearInterval(timerRef.current);
+      localStorage.removeItem(`order_cancel_time_${id}`);
+      setTimeLeft(null);
 
       setOrderData((prev) => ({
         ...prev,
@@ -404,6 +466,8 @@ function OrderDetail() {
   }
 
   const badgeStyle = getStatusBadge(orderData.status);
+  const isCancelled = orderData.status?.toLowerCase() === "cancelled";
+  const canRestore = isCancelled && timeLeft !== null && timeLeft > 0;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -456,19 +520,25 @@ function OrderDetail() {
               >
                 {/* Left Side Info */}
                 <div className="flex items-center gap-4 min-w-0">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = defaultPic;
-                    }}
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-gray-100 shrink-0"
-                  />
+                  <Link href={`/Productdetail/${item.slug}`} className="shrink-0 group">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultPic;
+                      }}
+                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-gray-100 group-hover:opacity-90 transition"
+                    />
+                  </Link>
+
                   <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
+                    <Link
+                      href={`/Productdetail/${item.slug}`}
+                      className="text-sm sm:text-base font-bold text-gray-900 hover:text-emerald-600 transition truncate block"
+                    >
                       {item.name}
-                    </h3>
+                    </Link>
 
                     {/* Color & Size Badges */}
                     <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -517,26 +587,35 @@ function OrderDetail() {
             </span>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            {orderData.status?.toLowerCase() === "pending" && (
-              <button
-                onClick={handleCancelOrder}
-                disabled={cancelling}
-                className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
-              >
-                {cancelling ? "Cancelling..." : "Cancel Order"}
-              </button>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-3 pt-2">
+            {canRestore && (
+              <p className="text-xs text-amber-600 font-semibold">
+                You can restore this order within <span className="font-bold underline">{timeLeft}s</span>.
+              </p>
             )}
 
-            {orderData.status?.toLowerCase() === "cancelled" && (
-              <button
-                onClick={handleRestoreOrder}
-                disabled={restoring}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
-              >
-                {restoring ? "Restoring..." : "Restore Order"}
-              </button>
-            )}
+            <div className="flex gap-3 ml-auto">
+              {orderData.status?.toLowerCase() === "pending" && (
+                <button
+                  onClick={handleCancelOrder}
+                  disabled={cancelling}
+                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
+                >
+                  {cancelling ? "Cancelling..." : "Cancel Order"}
+                </button>
+              )}
+
+              {canRestore && (
+                <button
+                  onClick={handleRestoreOrder}
+                  disabled={restoring}
+                  className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow-sm"
+                >
+                  <RotateCcw size={14} className={restoring ? "animate-spin" : ""} />
+                  {restoring ? "Restoring..." : `Restore Order (${timeLeft}s)`}
+                </button>
+              )}
+            </div>
           </div>
 
           {cancelError && (

@@ -7,24 +7,40 @@ import Link from "next/link";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 /* ------------------------------------------------------------------ */
-/* Shimmer — mirrors the actual cart layout (item rows + summary card)  */
-/* so the loading state doesn't jump/reflow once real data arrives.     */
+/* Shimmer — Pixel-perfect replica of the cart page items & summary   */
 /* ------------------------------------------------------------------ */
 function CartItemSkeleton() {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            {/* Image & Product Details */}
             <div className="flex items-center gap-4 w-full sm:w-auto flex-1">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gray-200 animate-pulse flex-shrink-0" />
-                <div className="flex-1 space-y-2 w-full max-w-xs">
-                    <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-3 w-2/3 bg-gray-200 rounded animate-pulse mt-1" />
+                {/* Product Thumbnail */}
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-gray-200 animate-pulse flex-shrink-0 border border-gray-100" />
+                
+                {/* Product Metadata */}
+                <div className="flex-1 space-y-2">
+                    {/* Product Title */}
+                    <div className="h-5 w-48 sm:w-60 bg-gray-200 rounded animate-pulse" />
+                    
+                    {/* Color & Size Specs */}
+                    <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                    
+                    {/* Price, Divider & Subtotal */}
+                    <div className="flex items-center gap-3 pt-1">
+                        <div className="h-3.5 w-20 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3.5 w-1 bg-gray-100 rounded" />
+                        <div className="h-3.5 w-28 bg-gray-200 rounded animate-pulse" />
+                    </div>
                 </div>
             </div>
 
+            {/* Quantity Stepper & Remove Button */}
             <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
+                {/* Stepper ([-] [qty] [+]) */}
                 <div className="h-9 w-28 bg-gray-200 rounded-xl animate-pulse" />
-                <div className="w-9 h-9 bg-gray-200 rounded-xl animate-pulse" />
+                
+                {/* Remove Cross Button */}
+                <div className="w-9 h-9 bg-gray-200 rounded-xl animate-pulse flex-shrink-0" />
             </div>
         </div>
     );
@@ -32,24 +48,33 @@ function CartItemSkeleton() {
 
 function CartSummarySkeleton() {
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-5" />
-
-            <div className="flex justify-between mb-3">
-                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-6 bg-gray-200 rounded animate-pulse" />
-            </div>
-            <div className="flex justify-between mb-4">
-                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-6 bg-gray-200 rounded animate-pulse" />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
+            {/* Summary Title with Dot Indicator */}
+            <div className="flex items-center gap-2 mb-4">
+                <div className="w-2.5 h-2.5 rounded-full bg-gray-200 animate-pulse" />
+                <div className="h-5 w-32 bg-gray-200 rounded animate-pulse" />
             </div>
 
+            {/* Total Items Row */}
+            <div className="flex justify-between items-center mb-3">
+                <div className="h-3.5 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-5 w-8 bg-gray-200 rounded animate-pulse" />
+            </div>
+
+            {/* Total Quantity Row */}
+            <div className="flex justify-between items-center mb-4">
+                <div className="h-3.5 w-24 bg-gray-200 rounded animate-pulse" />
+                <div className="h-5 w-8 bg-gray-200 rounded animate-pulse" />
+            </div>
+
+            {/* Total Amount Divider & Row */}
             <div className="flex justify-between items-center border-t border-gray-100 pt-4 mb-6">
                 <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-6 w-28 bg-gray-200 rounded animate-pulse" />
             </div>
 
-            <div className="h-11 w-full bg-gray-200 rounded-xl animate-pulse" />
+            {/* Checkout CTA Button */}
+            <div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse" />
         </div>
     );
 }
@@ -57,15 +82,17 @@ function CartSummarySkeleton() {
 function CartShimmer() {
     return (
         <main className="min-h-screen bg-gray-50 py-10">
-            <div className="container px-4 mx-auto sm:px-6 lg:px-10 max-w-7xl">
+            <div className="container mx-auto px-3 sm:px-4">
+                {/* Header Shimmer */}
                 <div className="text-center mb-8">
-                    <div className="h-8 w-36 bg-gray-200 rounded animate-pulse mx-auto mb-2.5" />
-                    <div className="h-3.5 w-56 bg-gray-200 rounded animate-pulse mx-auto" />
+                    <div className="h-8 w-40 bg-gray-200 rounded-lg animate-pulse mx-auto mb-2" />
+                    <div className="h-4 w-60 bg-gray-200 rounded-md animate-pulse mx-auto" />
                 </div>
 
+                {/* Grid Layout (4 Item Cards + Balanced Sticky Summary) */}
                 <div className="grid lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 space-y-4">
-                        {Array.from({ length: 3 }).map((_, i) => (
+                        {Array.from({ length: 4 }).map((_, i) => (
                             <CartItemSkeleton key={i} />
                         ))}
                     </div>
@@ -77,50 +104,73 @@ function CartShimmer() {
     );
 }
 
+// Calculate the effective price of a cart item's variant using the same
+// discount_percentage / cut_price rules used across the site.
+function getVariantPricing(item) {
+    const variant = item?.variant;
+    const product = variant?.product;
+
+    const rawPrice = Number(variant?.price || 0);
+    const rawCutPrice = variant?.cut_price ? Number(variant.cut_price) : null;
+
+    // discount_percentage comes from the flash_sale object (only present for flash sale products)
+    const discountPercentage = Number(product?.flash_sale?.discount_percentage || 0);
+
+    let price = rawPrice;
+    let cutPrice = rawCutPrice || 0;
+    let discountPercent = null;
+
+    if (discountPercentage > 0 && rawCutPrice) {
+        // CASE 1: discount_percentage is present -> calculate actual price from cut_price
+        cutPrice = rawCutPrice;
+        price = Math.round((rawCutPrice - (rawCutPrice * discountPercentage) / 100) * 100) / 100;
+        discountPercent = Math.round(discountPercentage);
+    } else if (rawCutPrice && rawCutPrice > rawPrice) {
+        // CASE 2: no discount_percentage -> just show price & cut_price as they are
+        cutPrice = rawCutPrice;
+        price = rawPrice;
+        discountPercent = Math.round(((rawCutPrice - rawPrice) / rawCutPrice) * 100);
+    } else {
+        price = rawPrice;
+        cutPrice = 0;
+        discountPercent = null;
+    }
+
+    return { price, cutPrice, discountPercent };
+}
 
 export default function CartPage() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    // Distinguishes "haven't checked auth yet" (null) from "checked, and
-    // there's no logged-in user" (false) — same pattern as the Wishlist
-    // page, so guests get an actual sign-in prompt instead of a blank
-    // "Your Cart is Empty" state that isn't really true for them.
     const [isAuthed, setIsAuthed] = useState(null);
-    // Inline error message shown in the page itself, replacing the old
-    // toast-based error reporting.
     const [error, setError] = useState(null);
 
     const getAuthHeaders = () => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
 
         return {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         };
     };
 
-    // Reads the same way Checkout.jsx does, with a fallback to a direct
-    // "userId" key in case some part of the app still sets it that way.
     const getUserId = () => {
-        const direct = localStorage.getItem('userId');
-        if (direct && direct !== 'undefined' && direct !== 'null') return direct;
+        const direct = localStorage.getItem("userId");
+        if (direct && direct !== "undefined" && direct !== "null") return direct;
 
         try {
-            const storedUser = localStorage.getItem('user');
+            const storedUser = localStorage.getItem("user");
             if (storedUser) {
                 const parsed = JSON.parse(storedUser);
                 return parsed?.id || parsed?._id || null;
             }
         } catch (e) {
-            console.error('Error parsing stored user', e);
+            console.error("Error parsing stored user", e);
         }
         return null;
     };
 
-    // Opens the same login modal the rest of the app uses (Navbar listens
-    // for this event), so "Sign In" here behaves identically to every
-    // other sign-in trigger in the app.
     const openSignIn = () => {
         window.dispatchEvent(new CustomEvent("open-auth-modal", { detail: { mode: "login" } }));
     };
@@ -129,9 +179,7 @@ export default function CartPage() {
         const fetchCartData = async () => {
             try {
                 const userId = getUserId();
-                const token = localStorage.getItem('token');
-
-                console.log('CartPage auth check:', { userId, hasToken: !!token });
+                const token = localStorage.getItem("token");
 
                 if (!userId || !token) {
                     setIsAuthed(false);
@@ -142,24 +190,21 @@ export default function CartPage() {
                 setIsAuthed(true);
 
                 const response = await fetch(`${API_BASE_URL}/api/cart?user_id=${userId}`, {
-                    method: 'GET',
+                    method: "GET",
                     headers: getAuthHeaders(),
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch cart data');
+                    throw new Error("Failed to fetch cart data");
                 }
 
                 const data = await response.json();
-                console.log('CART API response:', data);
-
                 const items = Array.isArray(data) ? data : data.data || [];
                 setCartItems(items);
                 localStorage.setItem("cart", JSON.stringify(items));
-
             } catch (err) {
                 console.error(err);
-                setError('Failed to load cart data from server.');
+                setError("Failed to load cart data from server.");
             } finally {
                 setLoading(false);
             }
@@ -175,11 +220,10 @@ export default function CartPage() {
             headers: getAuthHeaders(),
             body: JSON.stringify({
                 user_id: userId,
-                quantity: newQty
-            })
+                quantity: newQty,
+            }),
         })
             .then((res) => res.json())
-            .then((data) => console.log("Database updated:", data))
             .catch((err) => console.error("Database update error:", err));
     };
 
@@ -197,8 +241,8 @@ export default function CartPage() {
             method: "POST",
             headers: getAuthHeaders(),
             body: JSON.stringify({
-                user_id: userId
-            })
+                user_id: userId,
+            }),
         })
             .then((res) => {
                 if (!res.ok) {
@@ -206,7 +250,6 @@ export default function CartPage() {
                 }
                 return res.json();
             })
-            .then((data) => console.log("Item removed:", data))
             .catch((err) => console.error("Remove API error:", err));
     };
 
@@ -277,16 +320,15 @@ export default function CartPage() {
     };
 
     const totalQty = cartItems.reduce((total, item) => total + (item.quantity || 0), 0);
-    const totalAmount = cartItems.reduce((total, item) => total + Number(item.variant?.price || 0) * (item.quantity || 1), 0);
+    const totalAmount = cartItems.reduce((total, item) => {
+        const { price } = getVariantPricing(item);
+        return total + price * (item.quantity || 1);
+    }, 0);
 
     if (loading) {
         return <CartShimmer />;
     }
 
-    // ---------------------------------------------------------------
-    // GUEST STATE — not logged in. Replaces the old toast + silent blank
-    // "Your Cart is Empty" state, which was misleading for guests.
-    // ---------------------------------------------------------------
     if (isAuthed === false) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 px-4 py-8">
@@ -319,8 +361,8 @@ export default function CartPage() {
     }
 
     return (
-        <main className="min-h-screen bg-gray-50 py-10 ">
-            <div className="container mx-auto px-3  sm:px-4 ">
+        <main className="min-h-screen bg-gray-50 py-10">
+            <div className="container mx-auto px-3 sm:px-4">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-gray-800">My Cart</h1>
                     <p className="text-gray-500 text-sm mt-1">Review your items before checkout</p>
@@ -351,11 +393,11 @@ export default function CartPage() {
                     </div>
                 ) : (
                     <div className="grid lg:grid-cols-3 gap-8 items-start">
-
                         <div className="lg:col-span-2 space-y-4">
                             {cartItems.map((item) => {
                                 const variant = item.variant;
                                 const product = variant?.product;
+                                const { price, cutPrice, discountPercent } = getVariantPricing(item);
 
                                 return (
                                     <div
@@ -375,11 +417,23 @@ export default function CartPage() {
                                                 <p className="text-gray-500 text-xs mt-1">
                                                     Color : <span className="font-medium text-gray-700">{variant?.color_name || "N/A"}</span> &bull; Size : <span className="font-medium text-gray-700">{variant?.size || "N/A"}</span>
                                                 </p>
-                                                <div className="flex items-center gap-3 mt-1.5 text-xs">
-                                                    <span className="text-gray-500">Price: <strong className="text-gray-800">Rs {variant?.price || 0}</strong></span>
+                                                <div className="flex items-center gap-3 mt-1.5 text-xs flex-wrap">
+                                                    <span className="text-gray-500">
+                                                        Price: <strong className="text-gray-800">Rs {price}</strong>
+                                                    </span>
+                                                    {cutPrice > price && (
+                                                        <span className="text-gray-400 line-through">
+                                                            Rs {cutPrice}
+                                                        </span>
+                                                    )}
+                                                    {discountPercent && (
+                                                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                                            {discountPercent}% OFF
+                                                        </span>
+                                                    )}
                                                     <span className="text-gray-300">|</span>
                                                     <span className="text-[#00A651] font-semibold">
-                                                        Subtotal: Rs {Number(variant?.price || 0) * (item.quantity || 1)}
+                                                        Subtotal: Rs {price * (item.quantity || 1)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -432,7 +486,7 @@ export default function CartPage() {
                             </div>
                             <div className="flex justify-between text-xs text-gray-500 mb-4 ">
                                 <span>Total Quantity</span>
-                                <span className="font-bold text-gray-800 bg-gray-100 py-1 px-2 rounded   ">{totalQty}</span>
+                                <span className="font-bold text-gray-800 bg-gray-100 py-1 px-2 rounded">{totalQty}</span>
                             </div>
                             <div className="flex justify-between items-center text-base font-bold text-gray-800 border-t border-gray-100 pt-4 mb-6">
                                 <span>Total Amount</span>

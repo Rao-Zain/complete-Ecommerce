@@ -124,13 +124,13 @@ export default function Productdetail() {
   const productImages =
     product?.images?.length > 0
       ? product.images
-          .slice()
-          .sort((a, b) => Number(b.is_main) - Number(a.is_main))
-          .map((img) =>
-            img.image_path.startsWith("http")
-              ? img.image_path
-              : `${IMAGE_BASE_URL}/${img.image_path}`
-          )
+        .slice()
+        .sort((a, b) => Number(b.is_main) - Number(a.is_main))
+        .map((img) =>
+          img.image_path.startsWith("http")
+            ? img.image_path
+            : `${IMAGE_BASE_URL}/${img.image_path}`
+        )
       : [];
 
   const colors = Array.from(
@@ -150,15 +150,37 @@ export default function Productdetail() {
     (v) => v.color_name === selectedColor && v.size === selectedSize
   );
 
-  const price = activeVariant ? Number(activeVariant.price) : Number(product?.price || 0);
-  const cutPrice = activeVariant
+  // Raw fields coming from the API (variant-level, with product-level fallback)
+  const rawPrice = activeVariant ? Number(activeVariant.price) : Number(product?.price || 0);
+  const rawCutPrice = activeVariant?.cut_price
     ? Number(activeVariant.cut_price)
-    : Number(product?.cut_price || 0);
-
-  const discountPercent =
-    cutPrice && price && cutPrice > price
-      ? Math.round(((cutPrice - price) / cutPrice) * 100)
+    : product?.cut_price
+      ? Number(product.cut_price)
       : null;
+
+  // discount_percentage comes from the flash_sale object (only present for flash sale products)
+  const discountPercentage = Number(product?.flash_sale?.discount_percentage || 0);
+
+  let price = rawPrice;
+  let cutPrice = rawCutPrice || 0;
+  let discountPercent = null;
+
+  if (discountPercentage > 0 && rawCutPrice) {
+    // CASE 1: discount_percentage is present -> calculate actual price from cut_price
+    cutPrice = rawCutPrice;
+    price = Math.round((rawCutPrice - (rawCutPrice * discountPercentage) / 100) * 100) / 100;
+    discountPercent = Math.round(discountPercentage);
+  } else if (rawCutPrice && rawCutPrice > rawPrice) {
+    // CASE 2: no discount_percentage -> just show price & cut_price as they are
+    cutPrice = rawCutPrice;
+    price = rawPrice;
+    discountPercent = Math.round(((rawCutPrice - rawPrice) / rawCutPrice) * 100);
+  } else {
+    // No discount at all
+    price = rawPrice;
+    cutPrice = 0;
+    discountPercent = null;
+  }
 
   const stock = activeVariant ? Number(activeVariant.stock) : Number(product?.stock || 0);
   const avgRating = Number(product?.avg_rating ?? 0);
@@ -340,7 +362,7 @@ export default function Productdetail() {
                 <div className="h-6 w-20 bg-gray-200 animate-pulse rounded-md" />
               </div>
               <div className="h-6 w-32 bg-gray-200 animate-pulse rounded-full" />
-              
+
               {/* Color swatches */}
               <div className="space-y-2 pt-2">
                 <div className="h-3.5 w-20 bg-gray-200 animate-pulse rounded" />
@@ -404,7 +426,7 @@ export default function Productdetail() {
 
   return (
     <main className="w-full bg-gray-100">
-      <div className="container mx-auto px-3 sm:px-6 md:px-7 py-4 pb-16 sm:py-6">
+      <div className="container mx-auto px-3 sm:px-4 py-4 pb-16 sm:py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 overflow-hidden">
           <Link href="/" className="hover:text-black">Home</Link>
@@ -416,7 +438,7 @@ export default function Productdetail() {
 
         {/* Product Section 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          
+
           {/* COLUMN 1: Images */}
           <div className="lg:col-span-4 flex flex-col gap-3 min-w-0">
             <div className="relative">
@@ -541,11 +563,10 @@ export default function Productdetail() {
                     type="button"
                     key={idx}
                     onClick={() => changeImage(idx)}
-                    className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden border cursor-pointer transition shrink-0 ${
-                      activeImage === idx
-                        ? "border-emerald-600 ring-2 ring-emerald-500/40"
+                    className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-xl overflow-hidden border cursor-pointer transition shrink-0 ${activeImage === idx
+                        ? "border-emerald-600 ring-2 ring-gray-500/40"
                         : "border-gray-200 hover:opacity-80"
-                    }`}
+                      }`}
                   >
                     <Image
                       src={image}
@@ -562,7 +583,7 @@ export default function Productdetail() {
 
           {/* COLUMN 2: Product Info & Choices */}
           <div className="lg:col-span-5 flex flex-col min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
+            <h1 className="text-[#212121] text-[22px] font-bold break-words capitalize">
               {product.name}
             </h1>
 
@@ -583,12 +604,12 @@ export default function Productdetail() {
 
             {/* Pricing Section */}
             <div className="flex items-center gap-3 mt-3">
-              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-700">
+              <span className="text-xl sm:text-2xl font-bold text-emerald-700">
                 Rs {price ? price.toLocaleString() : "0"}
               </span>
 
               {cutPrice > price && (
-                <span className="text-sm text-gray-400 line-through">
+                <span className="text-xs sm:text-base text-gray-500 line-through font-medium">
                   Rs {cutPrice.toLocaleString()}
                 </span>
               )}
@@ -610,24 +631,27 @@ export default function Productdetail() {
             {/* Color Swatches */}
             {colors.length > 0 && (
               <div className="mt-5">
-                <span className="text-xs font-bold text-gray-800 block mb-2">Select Color</span>
-                <div className="flex flex-wrap gap-2">
+                <span className="text-sm font-bold text-gray-900 block mb-2.5">
+                  Select Color
+                </span>
+                <div className="flex flex-wrap gap-2.5">
                   {colors.map((color) => {
                     const variant = (product.variants || []).find((v) => v.color_name === color);
                     const colorImg = variant?.variant_image?.image_path;
+                    const isSelected = selectedColor === color;
+
                     return (
                       <button
                         type="button"
                         key={color}
                         onClick={() => handleColorChange(color)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition ${
-                          selectedColor === color
-                            ? "border-gray-900 bg-gray-50 text-gray-900 shadow-2xs"
-                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`flex items-center gap-3 px-2 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${isSelected
+                            ? "border-slate-400 bg-slate-200/70 text-gray-900"
+                            : "border-slate-200 bg-transparent text-gray-700 hover:border-slate-300"
+                          }`}
                       >
                         {colorImg && (
-                          <div className="relative w-5 h-5 rounded overflow-hidden">
+                          <div className="relative w-8 h-8 rounded-md overflow-hidden bg-gray-100 shrink-0">
                             <Image
                               src={
                                 colorImg.startsWith("http")
@@ -641,7 +665,7 @@ export default function Productdetail() {
                             />
                           </div>
                         )}
-                        <span>{color}</span>
+                        <span className="pr-1">{color}</span>
                       </button>
                     );
                   })}
@@ -651,54 +675,62 @@ export default function Productdetail() {
 
             {/* Size Swatches */}
             {sizes.length > 0 && (
-              <div className="mt-4">
-                <span className="text-xs font-bold text-gray-800 block mb-2">Select Size</span>
-                <div className="flex flex-wrap gap-2">
-                  {sizes.map((size) => (
-                    <button
-                      type="button"
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`min-w-10 h-9 px-3 rounded-lg border text-xs font-bold cursor-pointer transition ${
-                        selectedSize === size
-                          ? "border-gray-900 bg-gray-50 text-gray-900"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+              <div className="mt-5">
+                <span className="text-sm font-bold text-gray-900 block mb-2.5">
+                  Select Size
+                </span>
+                <div className="flex flex-wrap gap-2.5">
+                  {sizes.map((size) => {
+                    const isSelected = selectedSize === size;
+                    return (
+                      <button
+                        type="button"
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`min-w-11 h-10 px-3 rounded-lg border text-xs font-bold cursor-pointer transition-colors ${isSelected
+                            ? "border-slate-400 bg-slate-200/70 text-gray-900"
+                            : "border-slate-200 bg-transparent text-gray-800 hover:border-slate-300"
+                          }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Description Preview */}
-            <div className="mt-4">
-              <span className="text-xs font-bold text-gray-800 block mb-1">Description</span>
+            <div className="mt-5">
+              <span className="font-bold text-xs sm:text-sm mb-1 text-gray-900">
+                Description
+              </span>
               <div
-                className="text-xs text-gray-600 leading-relaxed line-clamp-2"
+                className="text-gray-700 font-medium text-xs sm:text-sm leading-5 sm:leading-6 line-clamp-1"
                 dangerouslySetInnerHTML={{ __html: product.description || "" }}
               />
             </div>
 
             {/* Quantity */}
-            <div className="mt-4">
-              <span className="text-xs font-bold text-gray-800 block mb-1.5">Quantity</span>
-              <div className="inline-flex items-center border border-gray-300 rounded-lg h-9 overflow-hidden bg-white">
+            <div className="mt-5">
+              <span className="text-sm font-bold text-gray-900 block mb-2">
+                Quantity
+              </span>
+              <div className="inline-flex items-center border border-slate-400 rounded-lg h-10 overflow-hidden bg-gray-50">
                 <button
                   type="button"
                   onClick={() => quantity > 1 && setQuantity((q) => q - 1)}
-                  className="w-8 h-full flex items-center justify-center hover:bg-gray-100 text-gray-700 font-bold"
+                  className="w-9 h-full flex items-center justify-center text-gray-700 hover:bg-slate-200/50 text-sm font-medium transition-colors"
                 >
                   -
                 </button>
-                <span className="w-10 h-full flex items-center justify-center text-xs font-bold border-x border-gray-300">
+                <span className="w-12 h-full flex items-center justify-center text-xs font-bold text-gray-900 border-x border-slate-300">
                   {quantity}
                 </span>
                 <button
                   type="button"
                   onClick={() => quantity < 10 && setQuantity((q) => q + 1)}
-                  className="w-8 h-full flex items-center justify-center hover:bg-gray-100 text-gray-700 font-bold"
+                  className="w-9 h-full flex items-center justify-center text-gray-700 hover:bg-slate-200/50 text-sm font-medium transition-colors"
                 >
                   +
                 </button>
@@ -706,12 +738,13 @@ export default function Productdetail() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-3 mt-6">
+            <div className="flex items-center gap-3 pt-1 mt-5">
               <button
                 type="button"
+                id="addToCartBtn"
                 onClick={handleAddToCart}
                 disabled={addingToCart || stock === 0}
-                className="flex-1 h-11 bg-black text-white text-xs sm:text-sm font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-black text-white px-2 sm:px-7 py-2.5 cursor-pointer rounded-lg text-xs sm:text-sm font-semibold hover:bg-gray-800 transition shadow-sm whitespace-nowrap disabled:opacity-50"
               >
                 <FaShoppingCart className="text-sm" />
                 <span>{addingToCart ? "Adding..." : "Add To Cart"}</span>
@@ -719,9 +752,10 @@ export default function Productdetail() {
 
               <button
                 type="button"
+                id="buyNowBtn"
                 onClick={handleBuyNow}
                 disabled={buyingNow || stock === 0}
-                className="flex-1 h-11 bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 hover:bg-orange-700 transition cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-[#ff4d2d] text-white px-2 sm:px-7 py-2.5 rounded-lg text-xs sm:text-sm font-semibold hover:bg-[#e63e20] transition cursor-pointer shadow-sm whitespace-nowrap disabled:opacity-50"
               >
                 <MdFlashOn className="text-lg" />
                 <span>{buyingNow ? "Processing..." : "Buy Now"}</span>
@@ -768,9 +802,8 @@ export default function Productdetail() {
               >
                 <span>{showFullDescription ? "Show Less" : "Read Full Description"}</span>
                 <MdKeyboardArrowDown
-                  className={`w-4 h-4 transition-transform duration-300 ${
-                    showFullDescription ? "rotate-180" : ""
-                  }`}
+                  className={`w-4 h-4 transition-transform duration-300 ${showFullDescription ? "rotate-180" : ""
+                    }`}
                 />
               </button>
             </div>

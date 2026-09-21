@@ -30,7 +30,7 @@ function WishlistItemSkeleton() {
 
 function WishlistShimmer() {
   return (
-    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen ">
+    <div className="container px-4 mx-auto sm:px-4 py-10 min-h-screen ">
       <div className="text-center mb-10">
         <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mx-auto mb-2.5" />
         <div className="h-3.5 w-72 bg-gray-200 rounded animate-pulse mx-auto" />
@@ -43,6 +43,44 @@ function WishlistShimmer() {
       </div>
     </div>
   );
+}
+
+// Calculate the effective price of a product's first variant using the same
+// discount_percentage / cut_price rules used across the site.
+function getVariantPricing(product) {
+  const firstVariant = product?.variants?.[0];
+
+  const rawPrice = firstVariant ? Number(firstVariant.price) : Number(product?.price || 0);
+  const rawCutPrice = firstVariant?.cut_price
+    ? Number(firstVariant.cut_price)
+    : product?.cut_price
+    ? Number(product.cut_price)
+    : null;
+
+  // discount_percentage comes from the flash_sale object (only present for flash sale products)
+  const discountPercentage = Number(product?.flash_sale?.discount_percentage || 0);
+
+  let price = rawPrice;
+  let cutPrice = rawCutPrice || 0;
+  let discountPercent = null;
+
+  if (discountPercentage > 0 && rawCutPrice) {
+    // CASE 1: discount_percentage is present -> calculate actual price from cut_price
+    cutPrice = rawCutPrice;
+    price = Math.round((rawCutPrice - (rawCutPrice * discountPercentage) / 100) * 100) / 100;
+    discountPercent = Math.round(discountPercentage);
+  } else if (rawCutPrice && rawCutPrice > rawPrice) {
+    // CASE 2: no discount_percentage -> just show price & cut_price as they are
+    cutPrice = rawCutPrice;
+    price = rawPrice;
+    discountPercent = Math.round(((rawCutPrice - rawPrice) / rawCutPrice) * 100);
+  } else {
+    price = rawPrice;
+    cutPrice = 0;
+    discountPercent = null;
+  }
+
+  return { price, cutPrice, discountPercent };
 }
 
 const Wishlist = () => {
@@ -189,11 +227,6 @@ const Wishlist = () => {
       : `${API_BASE_URL}/storage/${imagePath}`;
   };
 
-  const getProductPrice = (product) => {
-    const firstVariant = product?.variants?.[0];
-    return firstVariant ? `Rs. ${Number(firstVariant.price).toLocaleString()}` : "N/A";
-  };
-
   const getStockStatus = (product) => {
     const totalStock =
       product?.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
@@ -217,7 +250,7 @@ const Wishlist = () => {
   if (isAuthed === false) {
     return (
       <div className="bg-gray-100">
-      <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-8 flex items-center justify-center min-h-[60vh] ">
+      <div className="container px-4 mx-auto sm:px-4 py-8 flex items-center justify-center min-h-[60vh] ">
         <div className="max-w-md w-full mx-auto text-center bg-white/50 border border-gray-100 rounded-2xl shadow-sm p-6">
           <div className="w-14 h-14 mx-auto rounded-full bg-pink-50 flex items-center justify-center mb-3">
             <Heart size={26} className="text-pink-500" fill="currentColor" />
@@ -250,7 +283,7 @@ const Wishlist = () => {
   }
 
   return (
-    <div className="container px-4 mx-auto sm:px-6 lg:px-10 py-10 min-h-screen">
+    <div className="container px-3 mx-auto sm:px-4 py-10 min-h-screen">
       {/* Agar wishlist empty hai toh heading hide ho jayegi, sirf items hone par dikhegi */}
       {wishlist.length > 0 && (
         <div className="text-center mb-10">
@@ -280,6 +313,7 @@ const Wishlist = () => {
         <div className="grid grid-cols-1 gap-4">
           {wishlist.map((item) => {
             const product = item.product || item;
+            const { price, cutPrice, discountPercent } = getVariantPricing(product);
 
             return (
               <div
@@ -311,9 +345,21 @@ const Wishlist = () => {
                     }}
                   />
 
-                  <p className="text-emerald-600 font-bold mt-2 text-base">
-                    {getProductPrice(product)}
-                  </p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-emerald-600 font-bold text-base">
+                      Rs. {price ? price.toLocaleString() : "0"}
+                    </span>
+                    {cutPrice > price && (
+                      <span className="text-gray-400 text-xs sm:text-sm line-through">
+                        Rs. {cutPrice.toLocaleString()}
+                      </span>
+                    )}
+                    {discountPercent && (
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right Side: Actions / Buttons */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ProductCardContent from "@/app/ProductCardContent/ProductCardContent";
 import ProductCardImage from "@/app/ProductCardImage/ProductCardImage";
@@ -72,48 +72,109 @@ function mapToCardProduct(product) {
 const RelatedProducts = ({ slug }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [fetchError, setFetchError] = useState("");
 
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const observerRef = useRef(null);
+  const fetchingRef = useRef(false);
+
+  // Reset state on slug change
+  useEffect(() => {
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    setFetchError("");
+  }, [slug]);
+
+  // Fetch paginated products
   useEffect(() => {
     if (!slug) return;
 
-    const fetchRelatedProducts = async () => {
-      setLoading(true);
-      setFetchError("");
-      try {
-        // Use API_BASE_URL or fallback directly to stores.hexalogicx.com
-        const baseUrl = API_BASE_URL || "https://stores.hexalogicx.com";
-        const targetUrl = `${baseUrl}/api/products/related/${slug}`;
-        
-        console.log("Fetching related products from:", targetUrl);
-        const res = await fetch(targetUrl);
+    let isCancelled = false;
+    const isFirstPage = page === 1;
 
+    const fetchRelatedProducts = async () => {
+      if (isFirstPage) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      fetchingRef.current = true;
+
+      try {
+        const baseUrl = API_BASE_URL || "https://stores.hexalogicx.com";
+        const targetUrl = `${baseUrl}/api/products/related/${slug}?page=${page}`;
+
+        const res = await fetch(targetUrl);
         if (!res.ok) {
           throw new Error(`Server returned status: ${res.status}`);
         }
-        
-        const json = await res.json();
-        console.log("Related Products Response:", json);
 
-        // Accommodate multiple possible response structures
+        const json = await res.json();
+        if (isCancelled) return;
+
         const items =
+          json?.related_products?.data ||
           json?.related_products ||
+          json?.products?.data ||
           json?.products ||
           json?.data?.products ||
           json?.data ||
           (Array.isArray(json) ? json : []);
 
-        setProducts(items);
+        setProducts((prev) => {
+          if (isFirstPage) return items;
+          const existingIds = new Set(prev.map((p) => p.id));
+          return [...prev, ...items.filter((p) => !existingIds.has(p.id))];
+        });
+
+        const meta = json?.related_products || json?.products || json || {};
+        const isEnd =
+          (meta.current_page && meta.last_page && meta.current_page >= meta.last_page) ||
+          items.length === 0;
+
+        setHasMore(!isEnd);
       } catch (err) {
-        console.error("Error loading related products:", err);
-        setFetchError(err.message || "Failed to load");
+        if (!isCancelled) {
+          console.error("Error loading related products:", err);
+          setFetchError(err.message || "Failed to load");
+          setHasMore(false);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+          setLoadingMore(false);
+          fetchingRef.current = false;
+        }
       }
     };
 
     fetchRelatedProducts();
-  }, [slug]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [slug, page]);
+
+  // Intersection observer trigger
+  const loadMoreRef = useCallback(
+    (node) => {
+      if (loading || loadingMore) return;
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore && !fetchingRef.current) {
+          setPage((prev) => prev + 1);
+        }
+      });
+
+      if (node) observerRef.current.observe(node);
+    },
+    [loading, loadingMore, hasMore]
+  );
 
   return (
     <section className="w-full mt-10">
@@ -142,11 +203,11 @@ const RelatedProducts = ({ slug }) => {
         </p>
       </div>
 
-      {/* Loading Skeletons */}
+      {/* Initial Load Shimmer */}
       {loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={i} />
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={`initial-skel-${i}`} />
           ))}
         </div>
       )}
@@ -167,25 +228,36 @@ const RelatedProducts = ({ slug }) => {
 
       {/* Products Grid */}
       {!loading && products.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {products.map((product) => {
-            const cardProduct = mapToCardProduct(product);
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+            {products.map((product) => {
+              const cardProduct = mapToCardProduct(product);
 
-            return (
-              <Link
-                key={product.id}
-                href={`/Productdetail/${product.slug}`}
-                className="group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition duration-200 flex flex-col h-full"
-              >
-                <ProductCardImage
-                  product={product}
-                  discountPercent={cardProduct.discountPercent}
-                />
-                <ProductCardContent product={cardProduct} />
-              </Link>
-            );
-          })}
-        </div>
+              return (
+                <Link
+                  key={product.id}
+                  href={`/Productdetail/${product.slug}`}
+                  className="group bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition duration-200 flex flex-col h-full"
+                >
+                  <ProductCardImage
+                    product={product}
+                    discountPercent={cardProduct.discountPercent}
+                  />
+                  <ProductCardContent product={cardProduct} />
+                </Link>
+              );
+            })}
+
+            {/* Pagination Load More Shimmer Cards */}
+            {loadingMore &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={`more-skel-${i}`} />
+              ))}
+          </div>
+
+          {/* Sentinel element to trigger next page fetch */}
+          {hasMore && <div ref={loadMoreRef} className="w-full h-8" />}
+        </>
       )}
     </section>
   );

@@ -1,127 +1,160 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { API_BASE_URL } from "@/lib/config";
 import ProductCard from "../../ProductCard/page";
 import CategorySidebar from '../../CategorySidebar/page';
 import ShopShimmer from "./ShopShimmer";
 
-const PAGE_SIZE = 10;
+/* Base route of this page. */
+const BASE_PATH = '/ExploreProducts';
 
+/* Aligned values with Laravel Controller:
+   $request->sort === 'price_low_high'$request->sort === 'price_high_low'
+   fallback -> latest
+*/
 const SORT_OPTIONS = [
   { label: 'Latest Arrivals', value: 'latest' },
-  { label: 'Price: Low to High', value: 'price_asc' },
-  { label: 'Price: High to Low', value: 'price_desc' },
+  { label: 'Price: Low to High', value: 'price_low_high' },
+  { label: 'Price: High to Low', value: 'price_high_low' },
 ];
-const DEFAULT_SORT_VALUE = 'price_desc';
+const DEFAULT_SORT_VALUE = 'latest';
+const MAX_PRICE = 100000;
+
+let hasRenderedOnce = false;
 
 const ExploreProductsContent = () => {
   const params = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const searchQuery = searchParams.get('search') || '';
-  const pathSegments = params?.slug || [];
+  const initialPath = useMemo(
+    () => (Array.isArray(params?.slug) ? params.slug.join('/') : params?.slug || ''),
+    []
+  );
 
+  /* ---------------- state ---------------- */
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const [selectedCategoryPath, setSelectedCategoryPath] = useState(initialPath);
+  const [currentCategoryName, setCurrentCategoryName] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [priceRange, setPriceRange] = useState(Number(searchParams.get('max_price')) || MAX_PRICE);
+  const [selectedColors, setSelectedColors] = useState(() =>
+    searchParams.getAll('color[]').map((c) => c.toLowerCase())
+  );
+  const [selectedSizes, setSelectedSizes] = useState(() => searchParams.getAll('size[]'));
+  const [selectedBrands, setSelectedBrands] = useState(() => searchParams.getAll('brand[]'));
+  
+  const [sortOption, setSortOption] = useState(() => {
+    const fromUrl = searchParams.get('sort');
+    return SORT_OPTIONS.some((o) => o.value === fromUrl) ? fromUrl : DEFAULT_SORT_VALUE;
+  });
+
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef(null);
+
+  /* ---------------- refs ---------------- */
   const hasLoadedOnce = useRef(false);
   const fetchedPages = useRef(new Set());
   const fetchingRef = useRef(false);
   const hasMoreRef = useRef(true);
   const pageRef = useRef(1);
   const loadMoreRef = useRef(null);
+  const requestIdRef = useRef(0);
 
-  const [selectedCategoryPath, setSelectedCategoryPath] = useState(pathSegments.join('/'));
-  const [currentCategoryName, setCurrentCategoryName] = useState(null);
-
-  // Derive filters directly from active URL query parameters
-  const [priceRange, setPriceRange] = useState(Number(searchParams.get('max_price')) || 100000);
-  const [selectedColors, setSelectedColors] = useState(() =>
-    searchParams.getAll('color[]').map((c) => c.toLowerCase())
-  );
-  const [selectedSizes, setSelectedSizes] = useState(() => searchParams.getAll('size[]'));
-  const [selectedBrands, setSelectedBrands] = useState(() => searchParams.getAll('brand[]'));
-  const [sortOption, setSortOption] = useState(() => {
-    const fromUrl = searchParams.get('sort');
-    return SORT_OPTIONS.some((o) => o.value === fromUrl) ? fromUrl : DEFAULT_SORT_VALUE;
-  });
-  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortOption)?.label || SORT_OPTIONS[0].label;
-
-  const [sortOpen, setSortOpen] = useState(false);
-  const sortRef = useRef(null);
-
-  // Sync state whenever URL query params change (e.g. from in-page ImageSearchModal)
-  useEffect(() => {
-    const urlColors = searchParams.getAll('color[]').map((c) => c.toLowerCase());
-    const urlSizes = searchParams.getAll('size[]');
-    const urlBrands = searchParams.getAll('brand[]');
-    const urlPrice = searchParams.get('max_price');
-    const urlSort = searchParams.get('sort');
-
-    setSelectedColors(urlColors);
-    setSelectedSizes(urlSizes);
-    setSelectedBrands(urlBrands);
-    setPriceRange(urlPrice ? Number(urlPrice) : 100000);
-
-    if (urlSort && SORT_OPTIONS.some((o) => o.value === urlSort)) {
-      setSortOption(urlSort);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (sortRef.current && !sortRef.current.contains(e.target)) {
-        setSortOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const filtersRef = useRef(null);
+  filtersRef.current = {
+    selectedCategoryPath,
+    priceRange,
+    selectedColors,
+    selectedSizes,
+    selectedBrands,
+    sortOption,
+    searchQuery,
+  };
 
   useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
   useEffect(() => { pageRef.current = page; }, [page]);
 
-  // Fetch products from backend API
+  /* ---------------- URL writing ---------------- */
+  const spString = searchParams.toString();
+  const lastSyncedRef = useRef(spString);
+
+  const buildQuery = (f) => {
+    const qp = new URLSearchParams();
+    if (f.searchQuery && f.searchQuery.trim()) qp.set('search', f.searchQuery.trim());
+    if (f.priceRange && f.priceRange < MAX_PRICE) qp.set('max_price', String(f.priceRange));
+    f.selectedColors.forEach((c) => qp.append('color[]', c.toLowerCase()));
+    f.selectedSizes.forEach((s) => qp.append('size[]', s));
+    f.selectedBrands.forEach((b) => qp.append('brand[]', b));
+    if (f.sortOption && f.sortOption !== DEFAULT_SORT_VALUE) qp.set('sort', f.sortOption);
+    return qp;
+  };
+
+  const syncUrl = useCallback((overrides = {}) => {
+    if (typeof window === 'undefined') return;
+    const f = { ...filtersRef.current, ...overrides };
+    const segment = f.selectedCategoryPath ? `/${f.selectedCategoryPath}` : '';
+    const qs = buildQuery(f).toString();
+
+    lastSyncedRef.current = qs;
+    const url = `${BASE_PATH}${segment}${qs ? `?${qs}` : ''}`;
+    window.history.replaceState(window.history.state, '', url);
+  }, []);
+
+  useEffect(() => {
+    if (lastSyncedRef.current === spString) return;
+    lastSyncedRef.current = spString;
+
+    const sp = new URLSearchParams(spString);
+    setSearchQuery(sp.get('search') || '');
+    setSelectedColors(sp.getAll('color[]').map((c) => c.toLowerCase()));
+    setSelectedSizes(sp.getAll('size[]'));
+    setSelectedBrands(sp.getAll('brand[]'));
+    setPriceRange(sp.get('max_price') ? Number(sp.get('max_price')) : MAX_PRICE);
+
+    const s = sp.get('sort');
+    setSortOption(SORT_OPTIONS.some((o) => o.value === s) ? s : DEFAULT_SORT_VALUE);
+  }, [spString]);
+
+  /* ---------------- fetching ---------------- */
   const fetchProducts = useCallback(async (pageToFetch, isFilterChange) => {
-    if (fetchedPages.current.has(pageToFetch) || fetchingRef.current) return;
+    if (!isFilterChange && (fetchedPages.current.has(pageToFetch) || fetchingRef.current)) return;
+
+    const reqId = ++requestIdRef.current;
     fetchedPages.current.add(pageToFetch);
     fetchingRef.current = true;
 
     if (isFilterChange) setLoading(true);
     else setLoadingMore(true);
 
-    const categorySegment = selectedCategoryPath ? `/${selectedCategoryPath}` : '';
-    const qp = new URLSearchParams();
-
-    if (searchQuery.trim()) qp.set('search', searchQuery.trim());
-    if (priceRange) qp.set('max_price', priceRange);
-    selectedColors.forEach((c) => qp.append('color[]', c.toLowerCase()));
-    selectedSizes.forEach((s) => qp.append('size[]', s));
-    selectedBrands.forEach((b) => qp.append('brand[]', b));
-    if (sortOption) qp.set('sort', sortOption);
-    qp.set('page', pageToFetch);
-    qp.set('per_page', PAGE_SIZE);
+    const f = filtersRef.current;
+    const categorySegment = f.selectedCategoryPath ? `/${f.selectedCategoryPath}` : '';
+    const qp = buildQuery(f);
+    
+    // Backend custom pagination: page 1 delivers 15 items, page 2+ delivers 10
+    const expectedBatchSize = pageToFetch === 1 ? 15 : 10;
+    qp.set('sort', f.sortOption);
+    qp.set('page', String(pageToFetch));
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/categories-products${categorySegment}?${qp.toString()}`);
       const data = await res.json();
 
-      const items = data?.data || data?.products || (Array.isArray(data) ? data : []);
-      const meta = data?.meta || data || {};
-      const more = typeof meta.has_more === 'boolean'
-        ? meta.has_more
-        : typeof meta.hasMore === 'boolean'
-          ? meta.hasMore
-          : (meta.current_page && meta.last_page)
-            ? meta.current_page < meta.last_page
-            : items.length === PAGE_SIZE;
+      if (reqId !== requestIdRef.current) return;
+
+      const items = data?.products || data?.data || (Array.isArray(data) ? data : []);
+      
+      const more = (data.current_page && data.last_page)
+        ? data.current_page < data.last_page
+        : items.length >= expectedBatchSize;
 
       if (isFilterChange) {
         setProducts(items);
@@ -137,51 +170,48 @@ const ExploreProductsContent = () => {
       setPage(pageToFetch);
       pageRef.current = pageToFetch;
     } catch (err) {
+      if (reqId !== requestIdRef.current) return;
       console.error("Error fetching products:", err);
       if (isFilterChange) setProducts([]);
       setHasMore(false);
       hasMoreRef.current = false;
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      fetchingRef.current = false;
-      hasLoadedOnce.current = true;
+      if (reqId === requestIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+        fetchingRef.current = false;
+        hasLoadedOnce.current = true;
+        hasRenderedOnce = true;
+      }
     }
-  }, [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery]);
+  }, []);
 
-  // Trigger data fetch on active filters, category, or search term mutation
+  const filterKey = useMemo(() => JSON.stringify([
+    selectedCategoryPath,
+    priceRange,
+    [...selectedColors].sort(),
+    [...selectedSizes].sort(),
+    [...selectedBrands].sort(),
+    sortOption,
+    searchQuery,
+  ]), [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery]);
+
   useEffect(() => {
     fetchedPages.current.clear();
+    fetchingRef.current = false;
     setHasMore(true);
+    hasMoreRef.current = true;
+    setPage(1);
+    pageRef.current = 1;
     fetchProducts(1, true);
-  }, [selectedCategoryPath, priceRange, selectedColors, selectedSizes, selectedBrands, sortOption, searchQuery, fetchProducts]);
+  }, [filterKey, fetchProducts]);
 
-  // Push user interaction changes up to URL
-  const pushUrlFilterUpdate = useCallback((newColors, newPrice, newSizes, newBrands, newSort, newCategoryPath) => {
-    const categorySegment = newCategoryPath !== undefined
-      ? (newCategoryPath ? `/${newCategoryPath}` : '')
-      : (selectedCategoryPath ? `/${selectedCategoryPath}` : '');
-
-    const qp = new URLSearchParams();
-
-    if (searchQuery.trim()) qp.set('search', searchQuery.trim());
-    if (newPrice && newPrice < 100000) qp.set('max_price', newPrice);
-    newColors.forEach((c) => qp.append('color[]', c.toLowerCase()));
-    newSizes.forEach((s) => qp.append('size[]', s));
-    newBrands.forEach((b) => qp.append('brand[]', b));
-    if (newSort && newSort !== DEFAULT_SORT_VALUE) qp.set('sort', newSort);
-
-    const targetUrl = `/ExploreProducts${categorySegment}${qp.toString() ? `?${qp.toString()}` : ''}`;
-    router.replace(targetUrl, { scroll: false });
-  }, [selectedCategoryPath, searchQuery, router]);
-
-  // Infinite scrolling observer
+  /* ---------------- infinite scroll ---------------- */
   useEffect(() => {
-    if (!hasLoadedOnce.current || !loadMoreRef.current) return;
-
+    if (!loadMoreRef.current) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreRef.current && !fetchingRef.current) {
+        if (entries[0].isIntersecting && hasMoreRef.current && !fetchingRef.current && !loading) {
           fetchProducts(pageRef.current + 1, false);
         }
       },
@@ -189,76 +219,105 @@ const ExploreProductsContent = () => {
     );
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [fetchProducts, products.length]);
+  }, [fetchProducts, products.length, hasMore, loading]);
 
-const handleClearFilters = () => {
-  // 1. Reset all filter and search states
-  setSelectedCategoryPath('');
-  setPriceRange(100000);
-  setSelectedColors([]);
-  setSelectedSizes([]);
-  setSelectedBrands([]);
-  setSortOption(DEFAULT_SORT_VALUE);
+  /* ---------------- dropdown listener ---------------- */
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (sortRef.current && !sortRef.current.contains(e.target)) setSortOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // 2. Clear out any previous deduplicated pages
-  fetchedPages.current.clear();
-  setHasMore(true);
+  /* ---------------- stable handlers ---------------- */
+  const handleClearFilters = useCallback(() => {
+    setSelectedCategoryPath('');
+    setPriceRange(MAX_PRICE);
+    setSelectedColors([]);
+    setSelectedSizes([]);
+    setSelectedBrands([]);
+    setSortOption(DEFAULT_SORT_VALUE);
+    setSearchQuery('');
+    syncUrl({
+      selectedCategoryPath: '',
+      priceRange: MAX_PRICE,
+      selectedColors: [],
+      selectedSizes: [],
+      selectedBrands: [],
+      sortOption: DEFAULT_SORT_VALUE,
+      searchQuery: '',
+    });
+  }, [syncUrl]);
 
-  // 3. Immediately replace the URL with clean /ExploreProducts (no query parameters)
-  router.replace('/ExploreProducts', { scroll: false });
-};
-
-  const handleCategoryClick = (path) => {
+  const handleCategoryClick = useCallback((path) => {
     setSelectedCategoryPath(path);
-    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, selectedBrands, sortOption, path);
-  };
+    syncUrl({ selectedCategoryPath: path });
+  }, [syncUrl]);
 
-  const handlePriceChange = (price) => {
+  const handlePriceChange = useCallback((price) => {
     setPriceRange(price);
-    pushUrlFilterUpdate(selectedColors, price, selectedSizes, selectedBrands, sortOption);
-  };
+    syncUrl({ priceRange: price });
+  }, [syncUrl]);
 
-  const toggleColorSelection = (color) => {
-    const normalizedColor = color.toLowerCase();
-    const updated = selectedColors.includes(normalizedColor)
-      ? selectedColors.filter((c) => c !== normalizedColor)
-      : [...selectedColors, normalizedColor];
-
+  const toggleColorSelection = useCallback((color) => {
+    const c = color.toLowerCase();
+    const current = filtersRef.current.selectedColors;
+    const updated = current.includes(c) ? current.filter((x) => x !== c) : [...current, c];
     setSelectedColors(updated);
-    pushUrlFilterUpdate(updated, priceRange, selectedSizes, selectedBrands, sortOption);
-  };
+    syncUrl({ selectedColors: updated });
+  }, [syncUrl]);
 
-  const toggleSizeSelection = (size) => {
-    const updated = selectedSizes.includes(size)
-      ? selectedSizes.filter((s) => s !== size)
-      : [...selectedSizes, size];
-
+  const toggleSizeSelection = useCallback((size) => {
+    const current = filtersRef.current.selectedSizes;
+    const updated = current.includes(size) ? current.filter((s) => s !== size) : [...current, size];
     setSelectedSizes(updated);
-    pushUrlFilterUpdate(selectedColors, priceRange, updated, selectedBrands, sortOption);
-  };
+    syncUrl({ selectedSizes: updated });
+  }, [syncUrl]);
 
-  const toggleBrandSelection = (brand) => {
-    const updated = selectedBrands.includes(brand)
-      ? selectedBrands.filter((b) => b !== brand)
-      : [...selectedBrands, brand];
-
+  const toggleBrandSelection = useCallback((brand) => {
+    const current = filtersRef.current.selectedBrands;
+    const updated = current.includes(brand) ? current.filter((b) => b !== brand) : [...current, brand];
     setSelectedBrands(updated);
-    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, updated, sortOption);
-  };
+    syncUrl({ selectedBrands: updated });
+  }, [syncUrl]);
 
-  const handleSortSelect = (value) => {
+  const handleSortSelect = useCallback((value) => {
     setSortOption(value);
     setSortOpen(false);
-    pushUrlFilterUpdate(selectedColors, priceRange, selectedSizes, selectedBrands, value);
-  };
+    syncUrl({ sortOption: value });
+  }, [syncUrl]);
 
-  if (!hasLoadedOnce.current && loading) {
+  const handleCurrentCategoryChange = useCallback((node) => {
+    setCurrentCategoryName(node?.name || null);
+  }, []);
+
+  const sidebarPathSegments = useMemo(
+    () => (selectedCategoryPath ? selectedCategoryPath.split('/') : []),
+    [selectedCategoryPath]
+  );
+
+  const currentSortLabel =
+    SORT_OPTIONS.find((o) => o.value === sortOption)?.label || SORT_OPTIONS[0].label;
+
+  if (!hasRenderedOnce && !hasLoadedOnce.current && loading) {
     return <ShopShimmer />;
   }
 
+  const gridSkeleton = (count, prefix) =>
+    Array.from({ length: count }).map((_, i) => (
+      <div key={`${prefix}-${i}`} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+        <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
+        <div className="p-2 sm:p-3 flex flex-col gap-1.5">
+          <div className="h-3.5 sm:h-4 w-4/5 bg-gray-200 rounded animate-pulse" />
+          <div className="h-3 w-2/5 bg-gray-200 rounded animate-pulse" />
+        </div>
+      </div>
+    ));
+
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-3 sm:px-7 py-4 sm:pb-2">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:pb-2">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">
             {searchQuery ? `Search Results for "${searchQuery}"` : "Explore Our Products"}
@@ -272,7 +331,7 @@ const handleClearFilters = () => {
 
         <div className="flex flex-col lg:flex-row gap-6 pb-6 pt-3 lg:mt-0">
           <CategorySidebar
-            pathSegments={selectedCategoryPath ? selectedCategoryPath.split('/') : []}
+            pathSegments={sidebarPathSegments}
             onCategoryClick={handleCategoryClick}
             priceRange={priceRange}
             onPriceChange={handlePriceChange}
@@ -283,31 +342,31 @@ const handleClearFilters = () => {
             selectedBrands={selectedBrands}
             onBrandToggle={toggleBrandSelection}
             onClearFilters={handleClearFilters}
-            onCurrentCategoryChange={(node) => setCurrentCategoryName(node?.name || null)}
+            onCurrentCategoryChange={handleCurrentCategoryChange}
           />
 
           <div className="flex-1 min-w-0">
-            <div className="mb-3 hidden bg-white lg:flex flex-row gap-4 items-center justify-between border border-gray-200 rounded-xl py-2 px-4">
+            <div className="mb-3 flex flex-row gap-4 items-center justify-between border border-gray-200 rounded-xl py-2 px-4 bg-white">
               <h2 className="text-base sm:text-lg font-semibold text-gray-700">
                 {searchQuery
                   ? `Results for "${searchQuery}"`
                   : currentCategoryName
                     ? `Products in ${currentCategoryName}`
                     : "Products"}{" "}
-                ({products.length})
+                {!loading && `(${products.length})`}
               </h2>
 
-              <div className="w-40 relative h-[34px]" ref={sortRef}>
+              <div className="w-44 relative h-[34px]" ref={sortRef}>
                 <button
                   type="button"
                   onClick={() => setSortOpen((o) => !o)}
-                  className="w-full h-full bg-white border border-gray-200 rounded-full pl-3 pr-3 focus:outline-none text-xs cursor-pointer font-medium text-gray-700 flex items-center"
+                  className="w-full h-full bg-white border border-gray-200 rounded-full px-3 focus:outline-none text-xs cursor-pointer font-medium text-gray-700 flex items-center justify-between"
                 >
                   <span className="truncate">{currentSortLabel}</span>
                   {sortOpen ? (
-                    <FaChevronUp className="text-[10px] text-gray-400 ml-auto" />
+                    <FaChevronUp className="text-[10px] text-gray-400 ml-1 shrink-0" />
                   ) : (
-                    <FaChevronDown className="text-[10px] text-gray-400 ml-auto" />
+                    <FaChevronDown className="text-[10px] text-gray-400 ml-1 shrink-0" />
                   )}
                 </button>
 
@@ -334,15 +393,7 @@ const handleClearFilters = () => {
 
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 lg:gap-2.5">
-                {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                    <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
-                    <div className="p-2 sm:p-3 flex flex-col gap-1.5">
-                      <div className="h-3.5 sm:h-4 w-4/5 bg-gray-200 rounded animate-pulse" />
-                      <div className="h-3 w-2/5 bg-gray-200 rounded animate-pulse" />
-                    </div>
-                  </div>
-                ))}
+                {gridSkeleton(15, 'load')}
               </div>
             ) : products.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
@@ -358,24 +409,14 @@ const handleClearFilters = () => {
                   {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
-
-                  {loadingMore &&
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <div key={`skeleton-${i}`} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
-                        <div className="p-2 sm:p-3 flex flex-col gap-1.5">
-                          <div className="h-3.5 sm:h-4 w-4/5 bg-gray-200 rounded animate-pulse" />
-                          <div className="h-3 w-2/5 bg-gray-200 rounded animate-pulse" />
-                        </div>
-                      </div>
-                    ))}
+                  {loadingMore && gridSkeleton(5, 'more')}
                 </div>
 
                 {hasMore && <div ref={loadMoreRef} className="w-full h-4" />}
 
                 {!hasMore && !loadingMore && (
                   <p className="text-center text-xs text-gray-400 mt-6">
-                    You've reached the end of the results.
+                    You&apos;ve reached the end of the results.
                   </p>
                 )}
               </>

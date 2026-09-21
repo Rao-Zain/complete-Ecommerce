@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { FaArrowLeft, FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { API_BASE_URL } from "@/lib/config";
 
-// Global cache outside component lifecycle to prevent reloading/skeletons on filter clicks
+/* Global cache outside component lifecycle: categories are fetched once per
+   session, so the sidebar never shows its skeleton again. */
 let cachedCategoriesData = null;
 let isFetchingCategories = false;
 const categoryListeners = new Set();
@@ -34,6 +35,8 @@ const AVAILABLE_BRANDS = [
   { name: 'Gucci', slug: 'gucci' }
 ];
 
+const MAX_PRICE = 100000;
+
 const CategorySidebar = ({
   pathSegments = [],
   onCategoryClick,
@@ -51,7 +54,6 @@ const CategorySidebar = ({
   const searchParams = useSearchParams();
   const hasSearchKeyword = Boolean(searchParams?.get('search'));
 
-  // Initialize immediately from memory cache if available
   const [categoriesData, setCategoriesData] = useState(() => cachedCategoriesData || []);
   const [categoriesLoading, setCategoriesLoading] = useState(() => !cachedCategoriesData);
 
@@ -60,11 +62,15 @@ const CategorySidebar = ({
   const VISIBLE_CATEGORY_COUNT = 6;
   const VISIBLE_BRAND_COUNT = 4;
 
+  /* Local price value so dragging the slider is smooth and does not
+     fire a fetch on every single pixel of movement. */
+  const [localPrice, setLocalPrice] = useState(priceRange);
+  useEffect(() => { setLocalPrice(priceRange); }, [priceRange]);
+
   const fullPath = pathSegments.join('/');
   const currentSlug = pathSegments[pathSegments.length - 1] || '';
   const selectedCategory = currentSlug;
 
-  // Single fetch on mount that persists across filter changes
   useEffect(() => {
     if (cachedCategoriesData) {
       setCategoriesData(cachedCategoriesData);
@@ -130,9 +136,7 @@ const CategorySidebar = ({
       ? pathSegments.slice(0, -1).join('/')
       : pathSegments.slice(0, -2).join('/');
 
-    const label = hasKids
-      ? (match?.parent?.name || "All Categories")
-      : (match?.parent?.name || "All Categories");
+    const label = match?.parent?.name || "All Categories";
 
     return {
       currentNode: node,
@@ -157,17 +161,20 @@ const CategorySidebar = ({
 
   const hasActiveFilters =
     Boolean(selectedCategory) ||
-    priceRange < 100000 ||
+    priceRange < MAX_PRICE ||
     selectedColors.length > 0 ||
     selectedSizes.length > 0 ||
     selectedBrands.length > 0 ||
     hasSearchKeyword;
 
+  /* Report the resolved node upward without looping. */
+  const lastReportedIdRef = useRef(undefined);
   useEffect(() => {
-    if (onCurrentCategoryChange) {
-      onCurrentCategoryChange(currentNode);
-    }
-  }, [currentNode?.id, onCurrentCategoryChange]);
+    const id = currentNode?.id ?? null;
+    if (lastReportedIdRef.current === id) return;
+    lastReportedIdRef.current = id;
+    if (onCurrentCategoryChange) onCurrentCategoryChange(currentNode);
+  }, [currentNode, onCurrentCategoryChange]);
 
   if (categoriesLoading) {
     return (
@@ -295,15 +302,18 @@ const CategorySidebar = ({
         <input
           type="range"
           min="0"
-          max="100000"
+          max={MAX_PRICE}
           step="500"
-          value={priceRange}
-          onChange={(e) => onPriceChange(Number(e.target.value))}
+          value={localPrice}
+          onChange={(e) => setLocalPrice(Number(e.target.value))}
+          onMouseUp={(e) => onPriceChange(Number(e.target.value))}
+          onTouchEnd={(e) => onPriceChange(Number(e.target.value))}
+          onKeyUp={(e) => onPriceChange(Number(e.target.value))}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
         />
         <div className="flex justify-between text-xs text-gray-500 font-medium">
           <span>Rs 0</span>
-          <span className="text-black font-bold">Max: Rs {priceRange.toLocaleString()}</span>
+          <span className="text-black font-bold">Max: Rs {localPrice.toLocaleString()}</span>
         </div>
       </div>
 

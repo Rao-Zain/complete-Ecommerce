@@ -31,57 +31,62 @@ export default function ProductCardContent({ product }) {
       </div>
 
       {/* 2. Middle Section: Left (3-Tier Price Stack) & Right (Stock & Free Delivery) */}
-      <div className="flex items-center justify-between gap-1.5 -mt-2">
-        {/* Left Column: 3 Dedicated Lines */}
-        <div className="flex flex-col">
-          {/* Line 1: Current Price */}
-          <span className="lg:text-md text-base font-bold text-emerald-700 whitespace-nowrap">
-            Rs {price.toLocaleString()}
-          </span>
+   <div className="flex items-center justify-between gap-1.5 -mt-2">
+  {/* Left Column: Price + (Original Price & Discount Inline) */}
+  <div className="flex flex-col">
+    {/* Line 1: Current Price */}
+    <span className="text-base sm:text-lg font-bold text-emerald-700 whitespace-nowrap">
+      Rs {price.toLocaleString()}
+    </span>
 
-          {/* Line 2: Original Strikethrough Price */}
-          {originalPrice && originalPrice > price ? (
-            <span className="text-[10px] sm:text-xs text-gray-400 line-through whitespace-nowrap">
-              Rs {originalPrice.toLocaleString()}
-            </span>
-          ) : (
-            <span className="text-[10px] sm:text-xs invisible select-none">Rs 0</span>
-          )}
+    {/* Line 2: Original Strikethrough Price & Discount Inline */}
+    <div className="flex items-center gap-1.5">
+      {originalPrice && originalPrice > price ? (
+        <span className="text-[10px] sm:text-xs text-gray-400 line-through whitespace-nowrap">
+          Rs {originalPrice.toLocaleString()}
+        </span>
+      ) : (
+        <span className="text-[10px] sm:text-xs invisible select-none">Rs 0</span>
+      )}
 
-          {/* Line 3: Discount Percentage on its OWN line */}
-          {discountPercent && discountPercent > 0 ? (
-            <span className="text-[10px] sm:text-[13px] font-bold text-red-600 whitespace-nowrap">
-              -{discountPercent}%
-            </span>
-          ) : (
-            <span className="text-[10px] sm:text-[13px] invisible select-none">-0%</span>
-          )}
-        </div>
+      {discountPercent && discountPercent > 0 ? (
+        <span className="text-[10px] sm:text-xs font-bold text-red-600 whitespace-nowrap">
+          -{discountPercent}%
+        </span>
+      ) : (
+        <span className="text-[10px] sm:text-xs invisible select-none">-0%</span>
+      )}
+    </div>
+  </div>
 
-        {/* Right Column: In Stock & Free Delivery */}
-        <div className="flex flex-col items-end flex-shrink-0 mt-1">
-          {/* In Stock Badge */}
-          {inStock ? (
-            <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-sm font-semibold text-gray-800 whitespace-nowrap">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              In Stock
-            </span>
-          ) : (
-            <span className="inline-flex items-center text-[11px] sm:text-sm invisible">In Stock</span>
-          )}
+  {/* Right Column: In Stock & Free Delivery */}
+  <div className="flex flex-col items-end flex-shrink-0">
+    {/* In Stock Badge */}
+    {inStock ? (
+      <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-sm font-semibold text-gray-800 whitespace-nowrap">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        In Stock
+      </span>
+    ) : (
+      <span className="inline-flex items-center text-[11px] sm:text-sm invisible select-none">
+        In Stock
+      </span>
+    )}
 
-          {/* Free Delivery Truck */}
-          {freeDelivery && (
-            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 font-medium whitespace-nowrap mt-2">
-              <Truck className="w-3.5 h-3.5 text-gray-500" />
-              Free Delivery
-            </span>
-          )}
-        </div>
-      </div>
+    {/* Free Delivery Truck */}
+    {freeDelivery ? (
+      <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 font-medium whitespace-nowrap">
+        <Truck className="w-3.5 h-3.5 text-gray-500" />
+        Free Delivery
+      </span>
+    ) : (
+      <span className="text-[10px] sm:text-xs invisible select-none">Free Delivery</span>
+    )}
+  </div>
+</div>
 
       {/* 3. Bottom Row: Rating Stars + Count & Sold Count */}
       <div className="flex items-center justify-between gap-1 -mt-1.5 pb-0">

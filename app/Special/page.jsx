@@ -1,4 +1,5 @@
-import Image from 'next/image';
+import Image from "next/image";
+import Link from "next/link";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
 
 // 1. Fetch Store Settings to verify visibility flag
@@ -55,7 +56,14 @@ async function Special() {
   const heading = data.name;
   const description = data.description;
   const buttonText = data.button_name || "Explore Featured Range";
-  const link = data.link || "#";
+  
+  // Format internal routes safely
+  const rawLink = data.link || "Products";
+  const formattedLink = rawLink.startsWith("http")
+    ? rawLink
+    : rawLink.startsWith("/")
+    ? rawLink
+    : `/${rawLink}`;
 
   const bgImage = data.image
     ? data.image.startsWith("http")
@@ -65,40 +73,81 @@ async function Special() {
 
   return (
     <section
-      className="relative w-full bg-zinc-900 bg-fixed bg-cover bg-center overflow-hidden py-12 sm:py-16 px-4 sm:px-6 lg:px-8"
+      className="relative w-full bg-zinc-900 bg-cover bg-center sm:bg-fixed overflow-hidden py-14 sm:py-20 md:py-24 px-4 sm:px-6 lg:px-8"
       style={{ backgroundImage: bgImage ? `url('${bgImage}')` : undefined }}
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-900/80 to-zinc-950/60 z-0"></div>
+      {/* Background Dim / Gradient Layer */}
+      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/65 z-0 pointer-events-none" />
 
-      <div className="relative z-10 max-w-4xl mx-auto text-center flex flex-col items-center">
+      {/* Content Container */}
+      <div className="relative z-10 max-w-3xl mx-auto text-center flex flex-col items-center">
+        {/* Badge */}
         <span
-          className="text-white text-[11px] font-bold px-3 py-1 rounded uppercase tracking-wider mb-3 shadow-sm"
-          style={{ backgroundColor: '#fe9900' }}
+          className="text-white text-[10px] sm:text-xs font-bold px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full uppercase tracking-wider mb-3 sm:mb-4 shadow-sm"
+          style={{ backgroundColor: "#fe9900" }}
         >
           {badge}
         </span>
 
+        {/* Heading */}
         {heading && (
-          <h2 className="text-xl sm:text-3xl md:text-5xl font-extrabold text-white/100 tracking-tight mb-1 sm:mb-4">
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight sm:leading-tight mb-2.5 sm:mb-4 px-2">
             {heading}
           </h2>
         )}
 
+        {/* Description */}
         {description && (
-          <p className="text-gray-300 text-[11px] sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-none">
+          <p className="text-gray-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl mx-auto mb-6 sm:mb-8 px-2 sm:px-0">
             {description}
           </p>
         )}
 
-        <div className="mt-6">
-          <a href={link}>
-            <button className="bg-white hover:bg-gray-100 text-zinc-900 font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-2 transition duration-300 transform hover:scale-105">
-              <svg className="w-4 h-4 text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        {/* Action Button */}
+        <div>
+          {formattedLink.startsWith("http") ? (
+            <a
+              href={formattedLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-zinc-900 font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-lg transition duration-200 active:scale-95 sm:hover:scale-105"
+            >
+              <svg
+                className="w-4 h-4 text-zinc-900 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                />
               </svg>
-              {buttonText}
-            </button>
-          </a>
+              <span>{buttonText}</span>
+            </a>
+          ) : (
+            <Link
+              href={formattedLink}
+              className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-zinc-900 font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-lg transition duration-200 active:scale-95 sm:hover:scale-105"
+            >
+              <svg
+                className="w-4 h-4 text-zinc-900 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              <span>{buttonText}</span>
+            </Link>
+          )}
         </div>
       </div>
     </section>

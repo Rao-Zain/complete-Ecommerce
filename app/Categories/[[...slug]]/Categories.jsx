@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { API_BASE_URL, IMAGE_BASE_URL } from "@/lib/config";
@@ -27,7 +27,7 @@ const BannerShimmer = () => (
             <div className="mb-6">
                 <div className="w-56 h-6 bg-gray-300 rounded mb-4 animate-pulse"></div>
                 <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-2.5">
-                    {Array.from({ length: 10 }).map((_, i) => (
+                    {Array.from({ length: 12 }).map((_, i) => (
                         <div key={i} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                             <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
                             <div className="p-2 sm:p-3 flex flex-col">
@@ -42,19 +42,6 @@ const BannerShimmer = () => (
     </div>
 );
 
-/**
- * /Categories/[[...slug]]
- *
- * ONE component now handles category browsing at every depth:
- *   /Categories                          -> all top-level categories + all products
- *   /Categories/men-s-fashion            -> banner + its children + its products
- *   /Categories/men-s-fashion/t-shirts   -> banner + its children + its products
- *   /Categories/men-s-fashion/t-shirts/v-neck -> same pattern, any depth
- *
- * NOTE: the route folder must be named `[[...slug]]` (double brackets —
- * an OPTIONAL catch-all), not `[...slug]`, or `/Categories` with no
- * segments will 404.
- */
 const CategoriesPage = () => {
     const params = useParams();
     const pathSegments = params?.slug || [];
@@ -63,11 +50,16 @@ const CategoriesPage = () => {
 
     const [products, setProducts] = useState([]);
     const [categoriesData, setCategoriesData] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-    // Category tree for the current path (used to find the current node's
-    // own name/image/children).
+    // Infinite scroll & pagination states
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingInitial, setLoadingInitial] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const observerRef = useRef(null);
+
+    // Category tree
     useEffect(() => {
         setCategoriesLoading(true);
         const categoryPath = fullPath ? `/${fullPath}` : '';
@@ -86,31 +78,80 @@ const CategoriesPage = () => {
             });
     }, [fullPath]);
 
-    // Products belonging to the current category (or all products at root).
+    // Reset pagination and products when route changes
     useEffect(() => {
-        setLoading(true);
-        const categoryPath = fullPath ? `/${fullPath}` : '';
-
-        fetch(`${API_BASE_URL}/api/categories-products${categoryPath}`)
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.products) {
-                    setProducts(data.products);
-                } else if (Array.isArray(data)) {
-                    setProducts(data);
-                } else {
-                    setProducts([]);
-                }
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error("Error fetching products:", err);
-                setLoading(false);
-            });
+        setProducts([]);
+        setPage(1);
+        setHasMore(true);
     }, [fullPath]);
 
-    // Finds the exact node (at any depth) matching the current slug, so we
-    // can read ITS OWN name/image/children — not a top-level parent's.
+    // Fetch paginated products (12 items per page)
+    useEffect(() => {
+        let isCancelled = false;
+        const isFirstPage = page === 1;
+
+        if (isFirstPage) {
+            setLoadingInitial(true);
+        } else {
+            setLoadingMore(true);
+        }
+
+        const categoryPath = fullPath ? `/${fullPath}` : '';
+        const url = `${API_BASE_URL}/api/categories-products${categoryPath}?page=${page}&limit=12`;
+
+        fetch(url)
+            .then((res) => res.json())
+            .then((data) => {
+                if (isCancelled) return;
+
+                const fetchedProducts = Array.isArray(data)
+                    ? data
+                    : data.products?.data || data.products || data.data || [];
+
+                setProducts((prev) => (isFirstPage ? fetchedProducts : [...prev, ...fetchedProducts]));
+
+                // If fewer than 12 items returned or last_page reached, stop further calls
+                if (fetchedProducts.length < 12 || (data.products?.last_page && page >= data.products.last_page)) {
+                    setHasMore(false);
+                } else {
+                    setHasMore(true);
+                }
+            })
+            .catch((err) => {
+                if (!isCancelled) {
+                    console.error("Error fetching products:", err);
+                    setHasMore(false);
+                }
+            })
+            .finally(() => {
+                if (!isCancelled) {
+                    setLoadingInitial(false);
+                    setLoadingMore(false);
+                }
+            });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [fullPath, page]);
+
+    // Sentinel observer callback: increments page when scrolled to bottom
+    const lastElementRef = useCallback(
+        (node) => {
+            if (loadingInitial || loadingMore) return;
+            if (observerRef.current) observerRef.current.disconnect();
+
+            observerRef.current = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && hasMore) {
+                    setPage((prevPage) => prevPage + 1);
+                }
+            });
+
+            if (node) observerRef.current.observe(node);
+        },
+        [loadingInitial, loadingMore, hasMore]
+    );
+
     const findCategoryNode = (categories, slug) => {
         for (let cat of categories) {
             if (cat.slug === slug) return cat;
@@ -124,10 +165,6 @@ const CategoriesPage = () => {
     };
 
     const currentCategoryNode = currentSlug ? findCategoryNode(categoriesData, currentSlug) : null;
-
-    // At the root (`/Categories`), the "sub-category" grid is simply the
-    // full top-level list. At any deeper level, it's the matched node's
-    // own children.
     const subCategories = currentCategoryNode
         ? (currentCategoryNode.all_children || currentCategoryNode.children || [])
         : categoriesData;
@@ -181,9 +218,6 @@ const CategoriesPage = () => {
                                             {subCategories.map((subCat) => {
                                                 const subCatChildren = subCat.all_children || subCat.children || [];
                                                 const isLeaf = subCatChildren.length === 0;
-                                                // Leaf categories (no further children) skip straight to the
-                                                // filterable ExploreProducts page; only non-leaf categories
-                                                // keep drilling deeper into the Categories browser.
                                                 const href = isLeaf
                                                     ? `/ExploreProducts/${fullPath}/${subCat.slug}`
                                                     : `/Categories/${fullPath}/${subCat.slug}`;
@@ -213,7 +247,7 @@ const CategoriesPage = () => {
                             </>
                         ) : (
                             <>
-                                {/* ROOT VIEW — /Categories with no slug at all */}
+                                {/* ROOT VIEW */}
                                 <div className="text-center mb-6">
                                     <h2 className="text-2xl sm:text-4xl font-bold text-gray-900">All Categories</h2>
                                     <Link
@@ -251,8 +285,6 @@ const CategoriesPage = () => {
                                                             {topCat.name}
                                                         </h4>
                                                     </Link>
-
-
                                                 );
                                             })}
                                         </div>
@@ -268,9 +300,9 @@ const CategoriesPage = () => {
                                 <span>{currentCategoryNode ? `Products in ${currentCategoryNode.name}` : "All Products"}</span>
                             </h3>
 
-                            {loading ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 ">
-                                    {Array.from({ length: 10 }).map((_, i) => (
+                            {loadingInitial ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+                                    {Array.from({ length: 12 }).map((_, i) => (
                                         <div key={i} className="bg-white rounded-sm sm:rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                                             <div className="relative bg-gray-200 h-32 xs:h-36 sm:h-44 md:h-48 w-full animate-pulse" />
                                             <div className="p-2 sm:p-3 flex flex-col">
@@ -283,11 +315,30 @@ const CategoriesPage = () => {
                             ) : products.length === 0 ? (
                                 <p className="text-gray-500 text-sm">No products found in this category.</p>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 ">
-                                    {products.map((product) => (
-                                        <ProductCard key={product.id} product={product} />
-                                    ))}
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+                                        {products.map((product) => (
+                                            <ProductCard key={product.id} product={product} />
+                                        ))}
+                                    </div>
+
+                                    {/* Scroll Trigger Element */}
+                                    <div ref={lastElementRef} className="h-8 w-full" />
+
+                                    {/* Spinner for next batch */}
+                                    {loadingMore && (
+                                        <div className="flex justify-center items-center py-6">
+                                            <div className="w-7 h-7 border-3 border-pink-600 border-t-transparent rounded-full animate-spin" />
+                                        </div>
+                                    )}
+
+                                    {/* End of results indicator */}
+                                    {!hasMore && products.length > 0 && (
+                                        <p className="text-center text-xs text-gray-400 py-6">
+                                            You have reached the end of the products.
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

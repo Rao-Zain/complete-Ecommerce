@@ -356,12 +356,28 @@ export default function CheckoutPage() {
   // PRICE
   // ============================================================
   const getPrice = (item) => {
-    return Number(
-      item?.variant?.price ??
+    const variant = item?.variant;
+    const product = variant?.product;
+
+    const rawPrice = Number(
+      variant?.price ??
       item?.price ??
       item?.sale_price ??
       0
     );
+
+    const rawCutPrice = variant?.cut_price ? Number(variant.cut_price) : null;
+
+    // discount_percentage comes from the flash_sale object (only present for flash sale products)
+    const discountPercentage = Number(product?.flash_sale?.discount_percentage || 0);
+
+    if (discountPercentage > 0 && rawCutPrice) {
+      // CASE 1: discount_percentage is present -> calculate actual price from cut_price
+      return Math.round((rawCutPrice - (rawCutPrice * discountPercentage) / 100) * 100) / 100;
+    }
+
+    // CASE 2: no discount_percentage -> just use price as-is
+    return rawPrice;
   };
 
   const getQuantity = (item) => {

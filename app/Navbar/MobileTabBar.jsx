@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaHome, FaShoppingBag, FaShoppingCart, FaHeart, FaUser } from "react-icons/fa";
+import { FaHome, FaShoppingBag, FaShoppingCart, FaStore, FaHeart, FaUser } from "react-icons/fa";
 
 const MobileTabBar = ({ mounted, cartCount, wishlistCount, isLoggedIn, onOpenAuthModal }) => {
   const router = useRouter();
@@ -14,9 +14,9 @@ const MobileTabBar = ({ mounted, cartCount, wishlistCount, isLoggedIn, onOpenAut
           <FaHome className="text-base" />
           <span className="text-[10px] mt-0.5">Home</span>
         </Link>
-        <Link href="/Products" className="flex flex-col items-center text-gray-600 hover:text-black">
-          <FaShoppingBag className="text-base" />
-          <span className="text-[10px] mt-0.5">Shop</span>
+        <Link href="/CategoriesPage" className="flex flex-col items-center text-gray-600 hover:text-black">
+          <FaStore className="text-base" />
+          <span className="text-[10px] mt-0.5">Categories</span>
         </Link>
         <Link href="/CartProduct" className="relative flex flex-col items-center text-gray-600 hover:text-black">
           <FaShoppingCart className="text-base" />
