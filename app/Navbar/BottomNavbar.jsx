@@ -5,6 +5,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaBars, FaChevronDown, FaChevronRight } from "react-icons/fa";
 
+/**
+ * Dropdown height = Hero slider height (same aspect-ratio logic)
+ * ---------------------------------------------------------------------------
+ * Hero.jsx sizes the slider with:  md:aspect-[4/1]   ->  height = width / 4
+ * The dropdown is only visible from `lg` up, so that 4:1 ratio is the one
+ * that applies, and the slider is full width.
+ *
+ * We use the same ratio here. `100cqw` = 100% of the width of the nearest
+ * container (the navbar bar below is marked as a container), which is the same
+ * width the full-width slider has. So:
+ *
+ *   dropdown height = 100cqw / 4  +  DD_GAP
+ *
+ * DD_GAP is the bar's bottom padding (py-2 = 0.5rem). The dropdown opens from the
+ * bottom of the button, that far above the slider's top edge, so adding it makes
+ * the bottoms line up exactly.
+ *
+ * Keep HERO_RATIO in sync with the ratio used in Hero.jsx at `md` and above.
+ */
+const HERO_RATIO = 4; // width / height  (Hero: md:aspect-[4/1])
+const DD_GAP = "0.5rem"; // bar's bottom padding (py-2)
+
+const DD_STYLE = {
+  "--dd-w": "16rem",
+  "--dd-h": `calc(100cqw / ${HERO_RATIO} + ${DD_GAP})`,
+};
+
 const BottomNavbar = ({ categoriesData, loading }) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -22,11 +49,19 @@ const BottomNavbar = ({ categoriesData, loading }) => {
   const quickLinkCategories = categoriesData.slice(0, 4);
 
   return (
-    <div className="bg-white shadow-md hidden lg:block lg:sticky lg:top-0 z-20">
+    <div className="bg-white shadow-md hidden lg:block lg:sticky lg:top-0 z-20 [container-type:inline-size]">
       <div className="container mx-auto px-4 py-2 flex items-center justify-between">
         {/* Flyout Category Menu */}
-        <div className="relative" onMouseEnter={() => setIsOpen(true)} onMouseLeave={resetMenu}>
-          <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2.5 w-64 h-9 bg-gray-100 text-gray-800 px-5">
+        <div
+          className="relative"
+          style={DD_STYLE}
+          onMouseEnter={() => setIsOpen(true)}
+          onMouseLeave={resetMenu}
+        >
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-2.5 w-[var(--dd-w)] h-9 bg-gray-100 text-gray-800 px-5"
+          >
             <FaBars className="text-sm" />
             <span className="font-semibold text-sm text-gray-900">All Categories</span>
             <FaChevronDown className="text-xs text-gray-500 ml-auto" />
@@ -34,7 +69,7 @@ const BottomNavbar = ({ categoriesData, loading }) => {
 
           <div className={`${isOpen ? "flex" : "hidden"} absolute left-0 top-full z-50 shadow-2xl`}>
             {/* Level 1 */}
-            <div className="w-64 bg-white h-[420px] overflow-y-auto p-2 border border-gray-100">
+            <div className="w-[var(--dd-w)] shrink-0 bg-white h-[var(--dd-h)] overflow-y-auto custom-scrollbar p-2 border border-gray-100">
               {loading && categoriesData.length === 0 ? (
                 <div className="p-4 text-xs text-gray-500 text-center">Loading...</div>
               ) : (
@@ -57,7 +92,7 @@ const BottomNavbar = ({ categoriesData, loading }) => {
 
             {/* Level 2 */}
             {activeMainCat?.children?.length > 0 && (
-              <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 overflow-y-auto">
+              <div className="w-[var(--dd-w)] shrink-0 bg-white h-[var(--dd-h)] border-l border-gray-200 p-2 overflow-y-auto custom-scrollbar">
                 <ul className="space-y-0.5">
                   {activeMainCat.children.map((subCat) => (
                     <li key={subCat.id}>
@@ -78,7 +113,7 @@ const BottomNavbar = ({ categoriesData, loading }) => {
 
             {/* Level 3 */}
             {activeSubCat?.children?.length > 0 && (
-              <div className="w-64 bg-white h-[420px] border-l border-gray-200 p-2 overflow-y-auto">
+              <div className="w-[var(--dd-w)] shrink-0 bg-white h-[var(--dd-h)] border-l border-gray-200 p-2 overflow-y-auto custom-scrollbar">
                 <ul className="space-y-0.5">
                   {activeSubCat.children.map((childCat) => (
                     <li key={childCat.id}>
@@ -114,8 +149,33 @@ const BottomNavbar = ({ categoriesData, loading }) => {
             </div>
           )}
         </div>
-        <div className="w-64 shrink-0" />
+        <div className="w-[var(--dd-w)] shrink-0" />
       </div>
+
+      {/* Thin, light scrollbar for the dropdown panels (matches reference site) */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+        /* Firefox (Chrome/Edge/Safari use the rules above) */
+        @supports not selector(::-webkit-scrollbar) {
+          .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db #f3f4f6;
+          }
+        }
+      `}</style>
     </div>
   );
 };
